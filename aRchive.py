@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import os,sys,svn
-import svn.local,svn.remote
+import os,sys
+import svn,svn.local,svn.remote
 import pprint
 
 
@@ -25,14 +25,14 @@ def downloadMainBiocRepo(path):
 
 def archiveLocalRepo(path):
     # Check local repository for current revision number
-    localRepo = svn.local.LocalClient('/Users/nturaga/Documents/Bioconductor-Rpacks/Rpacks')
+    localRepo = svn.local.LocalClient(path)
     pprint.pprint(localRepo.info())
 
     # Print the version number
     print localRepo.info()['commit#revision']
-
+    return "Local Repository is aRchive-ed into versions"
 
 if __name__ == "__main__":
-    downloadMainBiocRepo('/Users/nturaga/Documents/Bioconductor-Rpacks/Rpacks')
+#    downloadMainBiocRepo('/Users/nturaga/Documents/Bioconductor-Rpacks/Rpacks')
     archiveLocalRepo('/Users/nturaga/Documents/Bioconductor-Rpacks/Rpacks')
     
