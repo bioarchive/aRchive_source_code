@@ -11,5 +11,12 @@ users access to all the versions of current BioConductor packages.
 
 ### Script dependencies:
 
-1. PySVN
-2. 
+1. SVN
+ 
+This package can be installed using 
+
+`sudo pip install svn`
+
+or
+
+`sudo easy_install svn`
