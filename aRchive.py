@@ -20,19 +20,33 @@ def downloadMainBiocRepo(path):
         mainRepo = svn.remote.RemoteClient("https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/")
         pprint.pprint(mainRepo.info())
         mainRepo.checkout(path)
-    return "Bioconductor Release version repository completely downloaded"
+    return "Bioconductor Release version repository downloaded"
+
+
+def makeVersion(folder):
+    print "Package %s has been versioned" % folder
+    
+    return 
 
 
 def archiveLocalRepo(path):
     # Check local repository for current revision number
     localRepo = svn.local.LocalClient(path)
     pprint.pprint(localRepo.info())
-
     # Print the version number
-    print localRepo.info()['commit#revision']
-    return "Local Repository is aRchive-ed into versions"
+    print "Printing Repository revision number: ", localRepo.info()['commit#revision']
+    rpacks = os.listdir(path)
+    for folder in rpacks:
+        if os.path.isdir(os.path.join(path,folder)):
+            makeVersion(folder)
+    return "aRchive has been created."
 
 if __name__ == "__main__":
-#    downloadMainBiocRepo('/Users/nturaga/Documents/Bioconductor-Rpacks/Rpacks')
+    # Run the install dependency function
+
+    # import dependency_install
+    # dependency_install.install_and_import('svn')
+    # downloadMainBiocRepo('/Users/nturaga/Documents/Bioconductor-Rpacks/Rpacks')
+    
     archiveLocalRepo('/Users/nturaga/Documents/Bioconductor-Rpacks/Rpacks')
     

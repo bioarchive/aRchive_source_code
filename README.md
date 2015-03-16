@@ -19,6 +19,10 @@ users access to all the versions of current BioConductor packages.
 
 ### Script dependencies:
 
+Please install [Subversion](https://subversion.apache.org/)
+
+aRchive.py should work directly when it is run. But if it doesn't and raises a dependency error, please install svn.
+
 1. SVN
  
     This package can be installed using 
@@ -28,3 +32,4 @@ users access to all the versions of current BioConductor packages.
      or
 
     `sudo easy_install svn`
+
