@@ -36,7 +36,7 @@ def downloadMainBiocRepo(path):
         print "SVN repo updated"
     else:        
         os.system("svn co --username readonly --password readonly https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/")
-        mainRepo = svn.local.LocalClient("https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/")
+        mainRepo = svn.local.LocalClient(".")
         pprint.pprint(mainRepo.info())
         # mainRepo.checkout(path)
     return "Bioconductor Release version repository downloaded"
