@@ -35,18 +35,17 @@ def downloadMainBiocRepo(path):
         os.system("svn update")
         print "SVN repo updated"
     else:        
-        mainRepo = svn.remote.RemoteClient("https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/")
+        os.system("svn co --username readonly --password readonly https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/")
+        mainRepo = svn.local.LocalClient("https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/")
         pprint.pprint(mainRepo.info())
-        mainRepo.checkout(path)
+        # mainRepo.checkout(path)
     return "Bioconductor Release version repository downloaded"
 
 
 def makeVersion(folder):
     os.chdir(folder)
-    # print "FOLDER:  " + os.getcwd()
     history = subprocess.check_output(['svn','log'])
     revert_ids = [line[0:line.find(" |")] for line in history.splitlines() if re.match("^r[0-9]",line)] 
-    # print revert_ids
     with open(os.path.join(folder,"DESCRIPTION")) as fp:
         latest_version = str([line[8:].strip() for i,line in enumerate(fp) if re.match("^Version: [0-9]",line)][0])
     print "Latest Version", latest_version
