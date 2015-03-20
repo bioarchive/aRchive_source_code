@@ -10,7 +10,7 @@ This script works entirely in the user specified folder:
 3. If there already exists a folder with packages, it updates the aRchive
     with new versions.
 
-Usage: python aRchive.py --archive_dir <folder>
+Usage: python aRchive.py -dir <Rpacks folder>
 
 """
 
