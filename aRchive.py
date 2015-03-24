@@ -102,8 +102,6 @@ if __name__ == "__main__":
         args = parser.parse_args()
     ARCHIVE_DIR = os.path.abspath(args.archive_directory)
     print "aRchive is being run in %s " % ARCHIVE_DIR
-    # import dependency_install
-    # dependency_install.install_and_import('svn')
     downloadMainBiocRepo(ARCHIVE_DIR)
     archiveLocalRepo(ARCHIVE_DIR)
     
