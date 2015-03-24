@@ -22,7 +22,6 @@ import svn,svn.local,svn.remote
 import pprint
 
 
-
 # Download the Bioconductor Repo
 def downloadMainBiocRepo(path):
     """
@@ -36,20 +35,22 @@ def downloadMainBiocRepo(path):
         print "SVN repo updated"
     else:        
         os.system("svn co --username readonly --password readonly https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/")
-        mainRepo = svn.local.LocalClient(".")
-        pprint.pprint(mainRepo.info())
-        # mainRepo.checkout(path)
     return "Bioconductor Release version repository downloaded"
 
 
 def makeVersion(folder):
+    # Change into current bioconductor package
     os.chdir(folder)
+    # Get history of the SVN repo and get all revert IDs
     history = subprocess.check_output(['svn','log'])
-    revert_ids = [line[0:line.find(" |")] for line in history.splitlines() if re.match("^r[0-9]",line)] 
+    revert_ids = [line[0:line.find(" |")] for line in history.splitlines() if re.match("^r[0-9]",line)]
+    # Get the version number of the Bioconductor package from DESCRIPTION file in SVN repo
     with open(os.path.join(folder,"DESCRIPTION")) as fp:
         latest_version = str([line[8:].strip() for i,line in enumerate(fp) if re.match("^Version: [0-9]",line)][0])
     print "Latest Version", latest_version
+    # Loop through the revert IDs to find new versions
     for id in revert_ids:
+        # Update repository to previous revert ID
         cmd = subprocess.Popen(["svn","update","-r", id],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         stdout,stderr = cmd.communicate()
         localRepo = svn.local.LocalClient('.')
@@ -95,13 +96,15 @@ if __name__ == "__main__":
         and version them based on commit history. If the command is rerun, it should automatically add to an \
         existing archive.")
     parser.add_argument("-dir",dest="archive_directory",help="Name of directory where aRchive.py should work",type=str)
+
     if len(sys.argv) <= 1:
         parser.print_usage()
         sys.exit(1)
     else:
         args = parser.parse_args()
+
     ARCHIVE_DIR = os.path.abspath(args.archive_directory)
     print "aRchive is being run in %s " % ARCHIVE_DIR
     downloadMainBiocRepo(ARCHIVE_DIR)
-    archiveLocalRepo(ARCHIVE_DIR)
+    # archiveLocalRepo(ARCHIVE_DIR)
     
