@@ -15,6 +15,7 @@ Usage: python aRchive.py -dir <Rpacks folder>
 """
 
 import os
+import os.path
 import sys
 import subprocess
 import re
@@ -38,7 +39,7 @@ def downloadMainBiocRepo(path):
     return "Bioconductor Release version repository downloaded"
 
 
-def makeVersion(folder):
+def makeVersion(folder,archive_dir):
     # Change into current bioconductor package
     os.chdir(folder)
     # Get history of the SVN repo and get all revert IDs
@@ -64,8 +65,7 @@ def makeVersion(folder):
             # Create new directory with version number as "-version" extention
             directory = os.path.split(folder)[-1]
             if not os.path.exists(directory):
-                os.makedirs(directory)
-                
+                # os.makedirs(directory)
                 print "HERE"
 
             # TODO: LOGIC ERROR
@@ -79,15 +79,25 @@ def makeVersion(folder):
     return 
 
 
-def archiveLocalRepo(archive_path,bioc_path):
+def archiveLocalRepo(bioc_dir,archive_dir):
     # Check local repository for current revision number
-    localRepo = svn.local.LocalClient(bioc_path)
+    # localRepo = svn.local.LocalClient(bioc_path)
     # pprint.pprint(localRepo.info())
     # Print the version number
     # print "Printing Repository revision number: ", localRepo.info()['commit#revision']
-    rpacks = os.listdir(bioc_path)
+    print bioc_dir
+    print archive_dir
+    print "Here"
+    if not os.path.exists(archive_dir):
+        print "Made %s" % archive_dir
+        os.mkdir(archive_dir)
+
+    # Get all bioconductor packages
+    rpacks = os.listdir(bioc_dir)
+    # TEST only DESeq2
     testPack = rpacks[rpacks.index('DESeq2')]
-    makeVersion(archive_path,os.path.join(bioc_path,testPack))
+    #CALL make version
+    makeVersion((os.path.join(bioc_dir,testPack)),archive_dir)
     # for folder in rpacks:
         # if os.path.isdir(os.path.join(path,folder)) and not folder.startswith("."):
             # makeVersion(os.path.join(path,folder))
@@ -115,6 +125,6 @@ if __name__ == "__main__":
     ARCHIVE_DIR = os.path.abspath(args.archive_dir)
     print "aRchive is being run in %s " % BIOCONDUCTOR_DIR
     print "aRchive is being stored in %s" % ARCHIVE_DIR
-    downloadMainBiocRepo(BIOCONDUCTOR_DIR)
+    # downloadMainBiocRepo(BIOCONDUCTOR_DIR)
     archiveLocalRepo(BIOCONDUCTOR_DIR,ARCHIVE_DIR)
     
