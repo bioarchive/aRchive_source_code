@@ -4,6 +4,8 @@
 Author: Nitesh Turaga
 Email: nturaga1 at jhu dot edu
 
+Please contact me for any questions regarding this abstract and code.
+
 This script works entirely in the user specified folder:
 1. Clones the BIOCONDUCTOR REPOSITORY in the folder
 2. Creates an archive in the same specified folder.
@@ -12,6 +14,8 @@ This script works entirely in the user specified folder:
 
 Usage: python aRchive.py -dir <Rpacks folder>
 
+NOTE: If you do not run the dependency installation for SVN, then the following program will throw an 
+    error.
 """
 
 import os
@@ -39,15 +43,15 @@ def downloadMainBiocRepo(path):
     return "Bioconductor Release version repository downloaded"
 
 
-def makeVersion(folder,archive_dir):
+def makeVersion(bioc_pack,archive_dir):
     # Change into current bioconductor package
-    os.chdir(folder)
+    os.chdir(bioc_pack)
     # Get history of the SVN repo and get all revert IDs
     history = subprocess.check_output(['svn','log'])
     revert_ids = [line[0:line.find(" |")] for line in history.splitlines() if re.match("^r[0-9]",line)]
     print revert_ids
     # Get the version number of the Bioconductor package from DESCRIPTION file in SVN repo
-    with open(os.path.join(folder,"DESCRIPTION")) as fp:
+    with open(os.path.join(bioc_pack,"DESCRIPTION")) as fp:
         latest_version = str([line[8:].strip() for i,line in enumerate(fp) if re.match("^Version: [0-9]",line)][0])
     print "Latest Version", latest_version
     # Loop through the revert IDs to find new versions
@@ -56,21 +60,22 @@ def makeVersion(folder,archive_dir):
         cmd = subprocess.Popen(["svn","update","-r", id],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
         stdout,stderr = cmd.communicate()
         localRepo = svn.local.LocalClient('.')
-        with open(os.path.join(folder,"DESCRIPTION")) as fp2:
+        with open(os.path.join(bioc_pack,"DESCRIPTION")) as fp2:
             curr_version = str([line[8:].strip() for i,line in enumerate(fp2) if re.match("^Version: [0-9]",line)][0])
         print "\n\n\n Current revision is %s at %s version \n\n"% (str(localRepo.info()['commit#revision']),curr_version)
 
         if curr_version!=latest_version:
-            print folder 
+            print bioc_pack 
             # Create new directory with version number as "-version" extention
-            directory = os.path.split(folder)[-1]
-            if not os.path.exists(directory):
-                # os.makedirs(directory)
+            bioc_pack = os.path.split(bioc_pack)[-1] + str(curr_version)
+            if not os.path.exists(os.path.join(archive_dir,bioc_pack)):
+                # TODO: LOGIC ERROR
+                os.mkdir(os.path.join(archive_dir,bioc_pack))
                 print "HERE"
-
-            # TODO: LOGIC ERROR
+                # SAVE THE CURRENT VERSION HERE
+                
         else:
-            print "Save to another folder"
+            print "Save to another bioc_pack"
             # os.system("tar -zxvf .")
         if id=="r101096":break
     # Return to most recent update
@@ -87,20 +92,20 @@ def archiveLocalRepo(bioc_dir,archive_dir):
     # print "Printing Repository revision number: ", localRepo.info()['commit#revision']
     print bioc_dir
     print archive_dir
-    print "Here"
+    # Make the directory which user specifies to build the archive. 
     if not os.path.exists(archive_dir):
-        print "Made %s" % archive_dir
         os.mkdir(archive_dir)
-
+        print "Made %s" % archive_dir
     # Get all bioconductor packages
     rpacks = os.listdir(bioc_dir)
-    # TEST only DESeq2
+    # TEST only DESeq2 , Remove this to run on all packages
     testPack = rpacks[rpacks.index('DESeq2')]
     #CALL make version
     makeVersion((os.path.join(bioc_dir,testPack)),archive_dir)
-    # for folder in rpacks:
-        # if os.path.isdir(os.path.join(path,folder)) and not folder.startswith("."):
-            # makeVersion(os.path.join(path,folder))
+    for bioc_pack in rpacks:
+        if os.path.isdir(os.path.join(path,bioc_pack)) and not bioc_pack.startswith("."):
+            # Make Versions for EACH R package
+            makeVersion(os.path.join(path,bioc_pack))
     return "aRchive has been created."
 
 
