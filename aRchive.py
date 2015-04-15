@@ -24,7 +24,10 @@ import sys
 import subprocess
 import re
 import svn,svn.local,svn.remote
-import pprint
+import shutil
+import pdb
+import errno
+# import pprint
 
 
 # Download the Bioconductor Repo
@@ -43,6 +46,18 @@ def downloadMainBiocRepo(path):
     return "Bioconductor Release version repository downloaded"
 
 
+
+def copyDirectory(src, dest):
+    try:
+        shutil.copytree(src, dest)
+    # Directories are the same
+    except shutil.Error as e:
+        print('Directory not copied. Error: %s' % e)
+    # Any error saying that the directory doesn't exist
+    except OSError as e:
+        print('Directory not copied. Error: %s' % e)
+
+
 def makeVersion(bioc_pack,archive_dir):
     # Change into current bioconductor package
     os.chdir(bioc_pack)
@@ -53,6 +68,7 @@ def makeVersion(bioc_pack,archive_dir):
     # Get the version number of the Bioconductor package from DESCRIPTION file in SVN repo
     with open(os.path.join(bioc_pack,"DESCRIPTION")) as fp:
         latest_version = str([line[8:].strip() for i,line in enumerate(fp) if re.match("^Version: [0-9]",line)][0])
+    fp.close()
     print "Latest Version", latest_version
     # Loop through the revert IDs to find new versions
     for id in revert_ids:
@@ -62,22 +78,25 @@ def makeVersion(bioc_pack,archive_dir):
         localRepo = svn.local.LocalClient('.')
         with open(os.path.join(bioc_pack,"DESCRIPTION")) as fp2:
             curr_version = str([line[8:].strip() for i,line in enumerate(fp2) if re.match("^Version: [0-9]",line)][0])
+        fp2.close()
         print "\n\n\n Current revision is %s at %s version \n\n"% (str(localRepo.info()['commit#revision']),curr_version)
 
         if curr_version!=latest_version:
-            print bioc_pack 
+            print "Bioc_pack version", bioc_pack 
             # Create new directory with version number as "-version" extention
-            bioc_pack = os.path.split(bioc_pack)[-1] + str(curr_version)
-            if not os.path.exists(os.path.join(archive_dir,bioc_pack)):
+            bioc_pack_curr = os.path.split(bioc_pack)[-1] + "_" + str(curr_version)
+            print "Bioc_pack_curr",os.path.join(archive_dir,bioc_pack_curr)
+            if not os.path.exists(os.path.join(archive_dir,bioc_pack_curr)):
                 # TODO: LOGIC ERROR
-                os.mkdir(os.path.join(archive_dir,bioc_pack))
-                print "HERE"
+                print "Made new versioned directory", os.path.join(archive_dir,bioc_pack_curr)
+
+            
                 # SAVE THE CURRENT VERSION HERE
-                
+                copyDirectory(bioc_pack,os.path.join(archive_dir,bioc_pack_curr))
+                # pdb.set_trace()
         else:
-            print "Save to another bioc_pack"
-            # os.system("tar -zxvf .")
-        if id=="r101096":break
+            print "Do nothing"
+
     # Return to most recent update
     update_cmd = subprocess.Popen(["svn","update"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     update_out,update_err=update_cmd.communicate()
@@ -99,11 +118,14 @@ def archiveLocalRepo(bioc_dir,archive_dir):
     # Get all bioconductor packages
     rpacks = os.listdir(bioc_dir)
     # TEST only DESeq2 , Remove this to run on all packages
-    testPack = rpacks[rpacks.index('DESeq2')]
+    # testPack = rpacks[rpacks.index('DESeq2')]
     #CALL make version
-    makeVersion((os.path.join(bioc_dir,testPack)),archive_dir)
+    # makeVersion((os.path.join(bioc_dir,testPack)),archive_dir)
+    print rpacks
     for bioc_pack in rpacks:
+
         if os.path.isdir(os.path.join(path,bioc_pack)) and not bioc_pack.startswith("."):
+            break
             # Make Versions for EACH R package
             makeVersion(os.path.join(path,bioc_pack))
     return "aRchive has been created."
@@ -130,6 +152,6 @@ if __name__ == "__main__":
     ARCHIVE_DIR = os.path.abspath(args.archive_dir)
     print "aRchive is being run in %s " % BIOCONDUCTOR_DIR
     print "aRchive is being stored in %s" % ARCHIVE_DIR
-    # downloadMainBiocRepo(BIOCONDUCTOR_DIR)
+    downloadMainBiocRepo(BIOCONDUCTOR_DIR)     
     archiveLocalRepo(BIOCONDUCTOR_DIR,ARCHIVE_DIR)
     
