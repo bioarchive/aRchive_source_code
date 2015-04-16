@@ -27,6 +27,7 @@ import svn,svn.local,svn.remote
 import shutil
 import pdb
 import errno
+import linecache
 
 
 # Download the Bioconductor Repo
@@ -44,8 +45,7 @@ def downloadMainBiocRepo(path):
         os.system("svn co --username readonly --password readonly https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/")
     return "Bioconductor Release version repository downloaded"
 
-
-
+# HELPER FUNCTION
 def copyDirectory(src, dest):
     try:
         shutil.copytree(src, dest)
@@ -55,6 +55,18 @@ def copyDirectory(src, dest):
     # Any error saying that the directory doesn't exist
     except OSError as e:
         print('Directory not copied. Error: %s' % e)
+
+
+def PrintException():
+    exc_type, exc_obj, tb = sys.exc_info()
+    f = tb.tb_frame
+    lineno = tb.tb_lineno
+    filename = f.f_code.co_filename
+    linecache.checkcache(filename)
+    line = linecache.getline(filename, lineno, f.f_globals)
+    print 'EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj)
+
+
 
 
 def makeVersion(bioc_pack,archive_dir):
@@ -107,10 +119,22 @@ def archiveLocalRepo(bioc_dir,archive_dir):
         print "Made %s" % archive_dir
     # Get all bioconductor packages
     rpacks = os.listdir(bioc_dir)
+
+    ## HACK
+    # rpacks = rpacks[rpacks.index('annmap'):]
+
+
     for bioc_pack in rpacks:
+        
         if os.path.isdir(os.path.join(bioc_dir,bioc_pack)) and not bioc_pack.startswith("."):
             # Make Versions for EACH R package
-            makeVersion((os.path.join(bioc_dir,bioc_pack)),archive_dir)
+            try:
+                makeVersion((os.path.join(bioc_dir,bioc_pack)),archive_dir)
+            except:
+                e = sys.exc_info()[0]
+                print "Error in - %s - Bioconductor package: \n %s" % (bioc_pack,e)
+                PrintException()
+
     return "aRchive has been created."
 
 
