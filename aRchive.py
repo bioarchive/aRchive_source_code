@@ -119,10 +119,8 @@ def archiveLocalRepo(bioc_dir,archive_dir):
         print "Made %s" % archive_dir
     # Get all bioconductor packages
     rpacks = os.listdir(bioc_dir)
-
-    ## HACK
-    # rpacks = rpacks[rpacks.index('annmap'):]
-
+# TODO :  Run "svn cleanup" after every 200 package revisions
+    print rpacks
 
     for bioc_pack in rpacks:
         
