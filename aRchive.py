@@ -152,13 +152,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=True, description="Create Bioconductor archive for all packages, \
         and version them based on commit history. If the command is rerun, it should automatically add to an \
         existing archive.")
-    parser.add_argument("-bioconductor_dir",dest="bioconductor_dir",help="Name of directory where aRchive.py should work i.e the Bioconductor clone repository",type=str)
-    parser.add_argument("-archive_dir",dest="archive_dir",help="Directory name to host all versions of all bioconductor packages. This is where the archive lives",type=str)
-    if len(sys.argv) <= 2:
-        parser.print_usage()
-        sys.exit(1)
-    else:
-        args = parser.parse_args()
+    parser.add_argument("bioconductor_dir", dest="bioconductor_dir",
+                        help="New (or existing) path for clone of Bioconductor repository")
+    parser.add_argument("archive_dir", dest="archive_dir",
+                        help="Output directory for created BioConductor aRchives")
+    args = parser.parse_args(0)
 
     BIOCONDUCTOR_DIR = os.path.abspath(args.bioconductor_dir)
     ARCHIVE_DIR = os.path.abspath(args.archive_dir)
