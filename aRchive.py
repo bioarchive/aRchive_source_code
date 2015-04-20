@@ -99,7 +99,7 @@ def makeVersion(bioc_pack, archive_dir):
     # Loop through the revert IDs to find new versions
     for id in revert_ids:
         # Update repository to previous revert ID
-        checkout(id)
+        checkout(bioc_pack, revision=id)
         # Needed?
         # localRepo = svn.local.LocalClient('.')
         # print "\n\n\n Current revision is %s at %s version \n\n" % (str(localRepo.info()['commit#revision']), curr_version)
@@ -113,17 +113,15 @@ def makeVersion(bioc_pack, archive_dir):
             print "Bioc_pack version", bioc_pack
             # Create new directory with version number as "-version" extention
             bioc_pack_name = os.path.split(bioc_pack)[-1]
-            bioc_pack_curr_version = str(curr_version)
-            if not os.path.exists(os.path.join(archive_dir, bioc_pack_name, bioc_pack_curr_version)):
-                print "Made new versioned directory", os.path.join(archive_dir, bioc_pack_name, bioc_pack_curr_version)
+            output_directory = os.path.join(archive_dir, bioc_pack_name, curr_version)
+            if not os.path.exists(output_directory):
+                print "Made new versioned directory", output_directory
                 # SAVE THE CURRENT VERSION HERE
-                copyDirectory(bioc_pack, os.path.join(archive_dir, bioc_pack_name, bioc_pack_curr_version))
+                copyDirectory(bioc_pack, output_directory)
         else:
             pass
     # Return to most recent update
-    update_cmd = subprocess.Popen(["svn", "update"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    update_out, update_err = update_cmd.communicate()
-    return
+    checkout(bioc_pack)
 
 
 def archiveLocalRepo(bioc_dir, archive_dir):
@@ -134,19 +132,18 @@ def archiveLocalRepo(bioc_dir, archive_dir):
         os.mkdir(archive_dir)
         print "Made %s" % archive_dir
     # Get all bioconductor packages
-    rpacks = os.listdir(bioc_dir)
-# TODO :  Run "svn cleanup" after every 200 package revisions
+    rpacks = [directory for directory in os.listdir(bioc_dir) if not directory.startswith('.')]
+    # TODO :  Run "svn cleanup" after every 200 package revisions
     print rpacks
 
     for bioc_pack in rpacks:
-        if os.path.isdir(os.path.join(bioc_dir, bioc_pack)) and not bioc_pack.startswith("."):
-            # Make Versions for EACH R package
-            try:
-                makeVersion((os.path.join(bioc_dir, bioc_pack)), archive_dir)
-            except:
-                e = sys.exc_info()[0]
-                print "Error in - %s - Bioconductor package: \n %s" % (bioc_pack, e)
-                PrintException()
+        # Make Versions for EACH R package
+        try:
+            makeVersion((os.path.join(bioc_dir, bioc_pack)), archive_dir)
+        except:
+            e = sys.exc_info()[0]
+            print "Error in - %s - Bioconductor package: \n %s" % (bioc_pack, e)
+            PrintException()
     return "aRchive has been created."
 
 
