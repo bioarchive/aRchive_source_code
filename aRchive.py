@@ -72,29 +72,42 @@ def PrintException():
     print 'EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj)
 
 
+def get_package_version(bioc_pack):
+    with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
+        info = yaml.load(handle)
+        return info['Version']
+
+
+def checkout(bioc_pack, revision=None):
+    if revision is not None:
+        return subprocess.check_call(["svn", "update", "-r", revision])
+    else:
+        return subprocess.check_call(["svn", "update"])
+
+
 def makeVersion(bioc_pack, archive_dir):
     # Change into current bioconductor package
     os.chdir(bioc_pack)
     # Get history of the SVN repo and get all revert IDs
     history = subprocess.check_output(['svn', 'log', '-q'])
     revert_ids = [line.split()[0] for line in history.splitlines() if line.startswith('r')]
+
     # Get the version number of the Bioconductor package from DESCRIPTION file in SVN repo
-    with open(os.path.join(bioc_pack, "DESCRIPTION")) as fp:
-        latest_version = str([line[8:].strip() for i, line in enumerate(fp) if re.match("^Version: [0-9]", line)][0])
-    fp.close()
+    latest_version = get_package_version(bioc_pack)
     print "Latest Version", latest_version
+
     # Loop through the revert IDs to find new versions
     for id in revert_ids:
         # Update repository to previous revert ID
-        cmd = subprocess.Popen(["svn", "update", "-r", id], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = cmd.communicate()
-        localRepo = svn.local.LocalClient('.')
+        checkout(id)
+        # Needed?
+        # localRepo = svn.local.LocalClient('.')
+        # print "\n\n\n Current revision is %s at %s version \n\n" % (str(localRepo.info()['commit#revision']), curr_version)
+
         if not os.path.exists(os.path.join(bioc_pack, "DESCRIPTION")):
             continue
-        with open(os.path.join(bioc_pack, "DESCRIPTION")) as fp2:
-            curr_version = str([line[8:].strip() for i, line in enumerate(fp2) if re.match("^Version: [0-9]", line)][0])
-        fp2.close()
-        print "\n\n\n Current revision is %s at %s version \n\n" % (str(localRepo.info()['commit#revision']), curr_version)
+
+        curr_version = get_package_version(bioc_pack)
 
         if curr_version != latest_version:
             print "Bioc_pack version", bioc_pack
