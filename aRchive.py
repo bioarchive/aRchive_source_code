@@ -119,7 +119,7 @@ def makeVersion(bioc_pack, archive_dir):
                 # SAVE THE CURRENT VERSION HERE
                 copyDirectory(bioc_pack, os.path.join(archive_dir, bioc_pack_name, bioc_pack_curr_version))
         else:
-            print "Do nothing"
+            pass
     # Return to most recent update
     update_cmd = subprocess.Popen(["svn", "update"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     update_out, update_err = update_cmd.communicate()
