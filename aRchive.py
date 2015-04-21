@@ -56,22 +56,12 @@ def copyDirectory(src, dest):
         print('Directory not copied. Error: %s' % e)
 
 
-def PrintException():
-    exc_type, exc_obj, tb = sys.exc_info()
-    f = tb.tb_frame
-    lineno = tb.tb_lineno
-    filename = f.f_code.co_filename
-    linecache.checkcache(filename)
-    line = linecache.getline(filename, lineno, f.f_globals)
-    #print 'EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj)
-
-
 def get_package_version(bioc_pack):
     try:
         with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
             info = yaml.load(handle)
             return info['Version']
-    except Exception, e:
+    except Exception:
         return None
 
 
@@ -127,18 +117,15 @@ def archiveLocalRepo(bioc_dir, archive_dir):
     print rpacks
 
     os.chdir(rpack_dir)
-    for bioc_pack in ('groHMM', ): #rpacks[0:1]:
+    for bioc_pack in rpacks[0:3]:
         # Make Versions for EACH R package
         try:
+            print "Archiving %s" % bioc_pack
             pack_path = os.path.join(bioc_dir, 'Rpacks', bioc_pack)
             archive_package_versions(pack_path, archive_dir)
         except Exception:
             pass
-            #print e
-            #e = sys.exc_info()[0]
-            #print "Error in - %s - Bioconductor package: \n %s" % (bioc_pack, e)
-            #PrintException()
-    return "aRchive has been created."
+    print "aRchive has been created."
 
 
 if __name__ == "__main__":
