@@ -20,10 +20,8 @@ NOTE: If you do not run the dependency installation for SVN, then the following 
 import argparse
 import os
 import os.path
-import sys
 import subprocess
 import shutil
-import linecache
 import yaml
 
 
@@ -34,6 +32,9 @@ def downloadMainBiocRepo(path):
     user-name: readonly;
     password: readonly;
     """
+    if not os.path.exists(path):
+        os.mkdir(path)
+
     os.chdir(path)
     if os.path.isdir(".svn"):
         subprocess.check_call(['svn', 'update'])
@@ -61,7 +62,8 @@ def get_package_version(bioc_pack):
         with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
             info = yaml.load(handle)
             return info['Version']
-    except Exception:
+    except Exception, e:
+        print e
         return None
 
 
@@ -117,7 +119,7 @@ def archiveLocalRepo(bioc_dir, archive_dir):
     print rpacks
 
     os.chdir(rpack_dir)
-    for bioc_pack in rpacks[0:3]:
+    for bioc_pack in ('Vega', ):
         # Make Versions for EACH R package
         try:
             print "Archiving %s" % bioc_pack
