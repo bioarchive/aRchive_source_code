@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """
 Author: Nitesh Turaga
 Email: nturaga1 at jhu dot edu
@@ -23,10 +22,6 @@ import os
 import os.path
 import sys
 import subprocess
-import re
-import svn
-import svn.local
-import svn.remote
 import shutil
 import linecache
 import yaml
@@ -41,13 +36,12 @@ def downloadMainBiocRepo(path):
     """
     os.chdir(path)
     if os.path.isdir(".svn"):
-        os.system("svn update")
-        print "SVN repo updated"
+        subprocess.check_call(['svn', 'update'])
     else:
         subprocess.check_call(['svn', 'co', '--username', 'readonly',
                                '--password', 'readonly',
                                'https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/'])
-    return "Bioconductor Release version repository downloaded"
+    return "Bioconductor Release version repository updated"
 
 
 # HELPER FUNCTION
@@ -69,27 +63,32 @@ def PrintException():
     filename = f.f_code.co_filename
     linecache.checkcache(filename)
     line = linecache.getline(filename, lineno, f.f_globals)
-    print 'EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj)
+    #print 'EXCEPTION IN ({}, LINE {} "{}"): {}'.format(filename, lineno, line.strip(), exc_obj)
 
 
 def get_package_version(bioc_pack):
-    with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
-        info = yaml.load(handle)
-        return info['Version']
+    try:
+        with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
+            info = yaml.load(handle)
+            return info['Version']
+    except Exception, e:
+        return None
 
 
-def checkout(bioc_pack, revision=None):
+def checkout(cwd, revision=None):
     if revision is not None:
-        return subprocess.check_call(["svn", "update", "-r", revision])
+        print "Updating to rev %s" % revision
+        try:
+            subprocess.check_output(["svn", "update", "-r", revision], cwd=cwd)
+        except Exception:
+            pass
     else:
-        return subprocess.check_call(["svn", "update"])
+        subprocess.check_output(["svn", "update"], cwd=cwd)
 
 
-def makeVersion(bioc_pack, archive_dir):
-    # Change into current bioconductor package
-    os.chdir(bioc_pack)
+def archive_package_versions(bioc_pack, archive_dir):
     # Get history of the SVN repo and get all revert IDs
-    history = subprocess.check_output(['svn', 'log', '-q'])
+    history = subprocess.check_output(['svn', 'log', '-q'], cwd=bioc_pack)
     revert_ids = [line.split()[0] for line in history.splitlines() if line.startswith('r')]
 
     # Get the version number of the Bioconductor package from DESCRIPTION file in SVN repo
@@ -100,17 +99,10 @@ def makeVersion(bioc_pack, archive_dir):
     for id in revert_ids:
         # Update repository to previous revert ID
         checkout(bioc_pack, revision=id)
-        # Needed?
-        # localRepo = svn.local.LocalClient('.')
-        # print "\n\n\n Current revision is %s at %s version \n\n" % (str(localRepo.info()['commit#revision']), curr_version)
-
-        if not os.path.exists(os.path.join(bioc_pack, "DESCRIPTION")):
-            continue
-
+        # Grab current version (or None if folder doesn't exist, in which case we'l finish the loop)
         curr_version = get_package_version(bioc_pack)
-
-        if curr_version != latest_version:
-            print "Bioc_pack version", bioc_pack
+        if curr_version is not None and curr_version != latest_version:
+            print "Bioc_pack version", bioc_pack, curr_version
             # Create new directory with version number as "-version" extention
             bioc_pack_name = os.path.split(bioc_pack)[-1]
             output_directory = os.path.join(archive_dir, bioc_pack_name, curr_version)
@@ -119,31 +111,33 @@ def makeVersion(bioc_pack, archive_dir):
                 # SAVE THE CURRENT VERSION HERE
                 copyDirectory(bioc_pack, output_directory)
         else:
-            pass
+            continue
     # Return to most recent update
     checkout(bioc_pack)
 
 
 def archiveLocalRepo(bioc_dir, archive_dir):
-    print bioc_dir
-    print archive_dir
     # Make the directory which user specifies to build the archive.
     if not os.path.exists(archive_dir):
         os.mkdir(archive_dir)
-        print "Made %s" % archive_dir
     # Get all bioconductor packages
-    rpacks = [directory for directory in os.listdir(bioc_dir) if not directory.startswith('.')]
+    rpack_dir = os.path.join(bioc_dir, 'Rpacks')
+    rpacks = [directory for directory in os.listdir(rpack_dir) if not directory.startswith('.')]
     # TODO :  Run "svn cleanup" after every 200 package revisions
     print rpacks
 
-    for bioc_pack in rpacks:
+    os.chdir(rpack_dir)
+    for bioc_pack in ('groHMM', ): #rpacks[0:1]:
         # Make Versions for EACH R package
         try:
-            makeVersion((os.path.join(bioc_dir, bioc_pack)), archive_dir)
-        except:
-            e = sys.exc_info()[0]
-            print "Error in - %s - Bioconductor package: \n %s" % (bioc_pack, e)
-            PrintException()
+            pack_path = os.path.join(bioc_dir, 'Rpacks', bioc_pack)
+            archive_package_versions(pack_path, archive_dir)
+        except Exception:
+            pass
+            #print e
+            #e = sys.exc_info()[0]
+            #print "Error in - %s - Bioconductor package: \n %s" % (bioc_pack, e)
+            #PrintException()
     return "aRchive has been created."
 
 
