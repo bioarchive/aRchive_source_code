@@ -91,7 +91,7 @@ def archive_package_versions(bioc_pack, archive_dir):
         checkout(bioc_pack, revision=id)
         # Grab current version (or None if folder doesn't exist, in which case we'l finish the loop)
         curr_version = get_package_version(bioc_pack)
-        if curr_version is not None and curr_version != latest_version:
+        if curr_version is not None:
             print "Bioc_pack version", bioc_pack, curr_version
             # Create new directory with version number as "-version" extention
             bioc_pack_name = os.path.split(bioc_pack)[-1]
