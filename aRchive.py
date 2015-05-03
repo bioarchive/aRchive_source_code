@@ -84,6 +84,9 @@ def get_package_version(bioc_pack):
     """
     try:
         with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
+            # Hack to prevent DESCRIPTION files from failing to load,
+            # because of yaml parsing.  
+            # handle = handle.replace('\t','    ')
             info = yaml.load(handle)
             return info['Version']
     except Exception, e:
@@ -133,7 +136,13 @@ def archive_package_versions(bioc_pack, archive_dir):
       archive_dir (str): Path to the archive directory of that package
     """
     # Get history of the SVN repo and get all revert IDs
-    history = subprocess.check_output(['svn', 'log', '-q'], cwd=bioc_pack)
+    try:
+        history = subprocess.check_output(['svn', 'log', '-q'], cwd=bioc_pack)
+    except CalledProcessError:
+        print "SVN log unable to be accessed in this %s package" % bioc_pack
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
+        pass
     revert_ids = [line.split()[0] for line in history.splitlines() if line.startswith('r')]
 
     # Get the version number of the Bioconductor package from DESCRIPTION file in SVN repo
@@ -178,17 +187,19 @@ def archive_local_repository(bioc_dir, archive_dir):
     # Get all bioconductor packages
     rpack_dir = os.path.join(bioc_dir)
     rpacks = [directory for directory in os.listdir(rpack_dir) if not directory.startswith('.')]
-    # TODO :  Run "svn cleanup" after every 200 package revisions
     print rpacks
-
     os.chdir(rpack_dir)
-    for bioc_pack in (rpacks[292:293]):
+
+    for bioc_pack in (rpacks[392:398]):
         # Make Versions for EACH R package
         try:
             print "Archiving %s" % bioc_pack
             pack_path = os.path.join(bioc_dir, bioc_pack)
             archive_package_versions(pack_path, archive_dir)
+            if rpacks.index(bioc_pack) in range(0,len(rpacks),9):
+                cleanup(bioc_dir)
         except Exception:
+            cleanup(bioc_dir)
             pass
     print "aRchive has been created."
 
