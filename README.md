@@ -43,18 +43,4 @@ aRchive.py should work directly when it is run. But if it doesn't and raises a d
 
     `sudo easy_install svn`
 
-### Usage:
-
-You would need to install all the dependencies of the particular bioconductor package, before the it can be installed. There are two ways to install packages, we recommend installation through the R interpreter.
-
-Once you enter the R interpreter, the steps to install a required package are as follows:
-
-1. This command should give you the list of missing package dependencies, if they are required. 
-
-` install.packages('/path/to/archive/package/version/',type = "source", repos=NULL,dependencies =TRUE)`
-
-
-2. 
-
-`source("http://bioconductor.org/biocLite.R"); biocLite(c('dependency1','dependency2'...))
 

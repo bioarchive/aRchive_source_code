@@ -190,7 +190,8 @@ def archive_local_repository(bioc_dir, archive_dir):
     print rpacks
     os.chdir(rpack_dir)
 
-    for bioc_pack in (rpacks[392:398]):
+    for bioc_pack in (rpacks):
+        # TODO : rpacks[392:398] yaml tab problem test
         # Make Versions for EACH R package
         try:
             print "Archiving %s" % bioc_pack
