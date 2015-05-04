@@ -25,7 +25,6 @@ import os
 import os.path
 import subprocess
 import shutil
-# import yaml
 import re
 import sys
 
