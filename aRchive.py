@@ -16,7 +16,8 @@ Example:
 
         $ python aRchive.py -bioconductor_dir ../Rpacks/ -archive_dir ../archive
 
-NOTE: This package required SVN as a dependency, it will throw an error if SVN doesn't exist.
+NOTE:
+    This package required SVN as a dependency, it will throw an error if SVN doesn't exist.
 """
 
 import argparse
@@ -24,7 +25,9 @@ import os
 import os.path
 import subprocess
 import shutil
-import yaml
+# import yaml
+import re
+import sys
 
 
 # Download the Bioconductor Repo
@@ -35,8 +38,8 @@ def checkout_main_biocondutor_repository(path):
     password: readonly;
 
     Args:
-      path (str): The path of the main BioConductor repository to be 
-        downloaded onto the machine. 
+      path (str): The path of the main BioConductor repository to be
+        downloaded onto the machine.
     """
     if not os.path.exists(path):
         os.mkdir(path)
@@ -49,7 +52,6 @@ def checkout_main_biocondutor_repository(path):
                                '--password', 'readonly',
                                'https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/'])
     return "Bioconductor Release version repository updated"
-
 
 
 def copy_directory(src, dest):
@@ -85,13 +87,13 @@ def get_package_version(bioc_pack):
     try:
         with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
             # Hack to prevent DESCRIPTION files from failing to load,
-            # because of yaml parsing.  
-            # handle = handle.replace('\t','    ')
-            info = yaml.load(handle)
-            return info['Version']
+            # because of yaml parsing.
+            info = str(
+                [line[8:].strip() for i, line in enumerate(handle) if re.match("^Version: [0-9]", line)][0])
+            return info
     except Exception, e:
         print e
-        return None
+        return "Skipping %s versioning as DESCRIPTION is missing" % bioc_pack
 
 
 def checkout(cwd, revision=None):
@@ -138,7 +140,7 @@ def archive_package_versions(bioc_pack, archive_dir):
     # Get history of the SVN repo and get all revert IDs
     try:
         history = subprocess.check_output(['svn', 'log', '-q'], cwd=bioc_pack)
-    except CalledProcessError:
+    except subprocess.CalledProcessError:
         print "SVN log unable to be accessed in this %s package" % bioc_pack
     except:
         print "Unexpected error:", sys.exc_info()[0]
@@ -153,13 +155,15 @@ def archive_package_versions(bioc_pack, archive_dir):
     for id in revert_ids:
         # Update repository to previous revert ID
         checkout(bioc_pack, revision=id)
-        # Grab current version (or None if folder doesn't exist, in which case we'll finish the loop)
+        # Grab current version (or None if folder doesn't exist,
+        # in which case we'll finish the loop)
         curr_version = get_package_version(bioc_pack)
         if curr_version is not None:
             print "Bioc_pack version", bioc_pack, curr_version
             # Create new directory with version number as "-version" extension
             bioc_pack_name = os.path.split(bioc_pack)[-1]
-            output_directory = os.path.join(archive_dir, bioc_pack_name, curr_version)
+            output_directory = os.path.join(archive_dir,
+                                            bioc_pack_name, curr_version)
             if not os.path.exists(output_directory):
                 print "Made new version directory", output_directory
                 # SAVE THE CURRENT VERSION HERE
@@ -190,14 +194,14 @@ def archive_local_repository(bioc_dir, archive_dir):
     print rpacks
     os.chdir(rpack_dir)
 
-    for bioc_pack in (rpacks):
+    for bioc_pack in (rpacks[392:397]):
         # TODO : rpacks[392:398] yaml tab problem test
         # Make Versions for EACH R package
         try:
             print "Archiving %s" % bioc_pack
             pack_path = os.path.join(bioc_dir, bioc_pack)
             archive_package_versions(pack_path, archive_dir)
-            if rpacks.index(bioc_pack) in range(0,len(rpacks),9):
+            if rpacks.index(bioc_pack) in range(0, len(rpacks), 9):
                 cleanup(bioc_dir)
         except Exception:
             cleanup(bioc_dir)
@@ -207,10 +211,11 @@ def archive_local_repository(bioc_dir, archive_dir):
 
 if __name__ == "__main__":
     # Run the install dependency function
-    parser = argparse.ArgumentParser(add_help=True, description="Create Bioconductor archive for all packages, \
-        and version them based on commit history. If the command is rerun, it should automatically add to an \
-        existing archive.")
-    parser.add_argument("bioconductor_dir", help="New (or existing) path for clone of Bioconductor repository")
+    parser = argparse.ArgumentParser(add_help=True, description="Create Bioconductor archive for\
+        all packages, and version them based on commit history. If the command is rerun,\
+        it should automatically add to an existing archive.")
+    parser.add_argument("bioconductor_dir", help="New (or existing) path for clone of\
+     Bioconductor repository")
     parser.add_argument("archive_dir", help="Output directory for created BioConductor aRchives")
     args = parser.parse_args()
 
