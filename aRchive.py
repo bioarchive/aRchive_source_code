@@ -192,10 +192,9 @@ def archive_local_repository(bioc_dir, archive_dir):
     rpacks = [directory for directory in os.listdir(rpack_dir) if not directory.startswith('.')]
     log.debug(' '.join(rpacks))
 
-    rpacks = ('SPIA', )
-
+    # TODO : rpacks[392:398] yaml tab problem test
+    rpacks = rpacks[392:398]
     for index, bioc_pack in enumerate(rpacks):
-        # TODO : rpacks[392:398] yaml tab problem test
         # Make Versions for EACH R package
         try:
             log.info("Archiving %s" % bioc_pack)
