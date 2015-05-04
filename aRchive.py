@@ -181,12 +181,9 @@ def archive_local_repository(bioc_dir, archive_dir):
       bioc_dir (str): Path to directory which holds all the BioConductor
         repositories.
       archive_dir (str): Path to the archive directory
-
-    TODO: Add SVN cleanup to this function after every 200 packages
     """
     # Get all bioconductor packages
-    rpack_dir = os.path.join(bioc_dir, 'Rpacks')
-    rpacks = [directory for directory in os.listdir(rpack_dir) if not directory.startswith('.')]
+    rpacks = [directory for directory in os.listdir(bioc_dir) if not directory.startswith('.')]
     log.debug(' '.join(rpacks))
 
     # TODO : rpacks[392:398] yaml tab problem test
@@ -195,13 +192,13 @@ def archive_local_repository(bioc_dir, archive_dir):
         # Make Versions for EACH R package
         try:
             log.info("Archiving %s" % package_name)
-            archive_package_versions(os.path.join(rpack_dir, package_name), archive_dir)
+            archive_package_versions(os.path.join(bioc_dir, package_name), archive_dir)
 
         except Exception, e:
             log.error(e)
         # Every 100 packages, run `svn cleanup`
         if index % 100 == 99:
-            cleanup(rpack_dir)
+            cleanup(bioc_dir)
     log.info("aRchive has been created.")
 
 
@@ -224,4 +221,4 @@ if __name__ == "__main__":
     # Make the directory which user specifies to build the archive.
     if not os.path.exists(ARCHIVE_DIR):
         os.mkdir(ARCHIVE_DIR)
-    archive_local_repository(BIOCONDUCTOR_DIR, ARCHIVE_DIR)
+    archive_local_repository(os.path.join(BIOCONDUCTOR_DIR, 'Rpacks'), ARCHIVE_DIR)
