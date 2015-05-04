@@ -16,8 +16,6 @@ Example:
 
         $ python aRchive.py -bioconductor_dir ../Rpacks/ -archive_dir ../archive
 
-NOTE:
-    This package required SVN as a dependency, it will throw an error if SVN doesn't exist.
 """
 
 import argparse
@@ -27,6 +25,9 @@ import subprocess
 import shutil
 import re
 import sys
+import logging
+logging.basicConfig()
+log = logging.getLogger()
 
 
 # Download the Bioconductor Repo
@@ -66,10 +67,10 @@ def copy_directory(src, dest):
         shutil.copytree(src, dest)
     # Directories are the same
     except shutil.Error as e:
-        print('Directory not copied. Error: %s' % e)
+        log.error('Directory not copied. Error: %s' % e)
     # Any error saying that the directory doesn't exist
     except OSError as e:
-        print('Directory not copied. Error: %s' % e)
+        log.error('Directory not copied. Error: %s' % e)
 
 
 def get_package_version(bioc_pack):
@@ -78,10 +79,6 @@ def get_package_version(bioc_pack):
 
     Args:
       bioc_pack (str): Name of the BioConductor package
-
-    Raises:
-      IOError: File not found, because the "DESCRIPTION" file is missing
-        in the package
     """
     try:
         with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
@@ -91,8 +88,9 @@ def get_package_version(bioc_pack):
                 [line[8:].strip() for i, line in enumerate(handle) if re.match("^Version: [0-9]", line)][0])
             return info
     except Exception, e:
+        log.warn("Could not obtain a version number for %s" % bioc_pack)
         print e
-        return "Skipping %s versioning as DESCRIPTION is missing" % bioc_pack
+        return None
 
 
 def checkout(cwd, revision=None):
@@ -123,9 +121,9 @@ def cleanup(path):
     """
     try:
         subprocess.check_call(['svn', 'cleanup', path])
+        print "Ran SVN cleanup on local copy of BioConductor repository"
     except Exception:
         pass
-    return "Ran SVN cleanup on local copy of BioConductor repository"
 
 
 def archive_package_versions(bioc_pack, archive_dir):
@@ -188,23 +186,25 @@ def archive_local_repository(bioc_dir, archive_dir):
     if not os.path.exists(archive_dir):
         os.mkdir(archive_dir)
     # Get all bioconductor packages
-    rpack_dir = os.path.join(bioc_dir)
+    rpack_dir = os.path.join(bioc_dir, 'Rpacks')
     rpacks = [directory for directory in os.listdir(rpack_dir) if not directory.startswith('.')]
-    print rpacks
-    os.chdir(rpack_dir)
+    #print rpacks
 
-    for bioc_pack in (rpacks[392:397]):
+    rpacks = ('SPIA', )
+
+    for index, bioc_pack in enumerate(rpacks):
         # TODO : rpacks[392:398] yaml tab problem test
         # Make Versions for EACH R package
         try:
             print "Archiving %s" % bioc_pack
-            pack_path = os.path.join(bioc_dir, bioc_pack)
+            pack_path = os.path.join(rpack_dir, bioc_pack)
             archive_package_versions(pack_path, archive_dir)
-            if rpacks.index(bioc_pack) in range(0, len(rpacks), 9):
-                cleanup(bioc_dir)
-        except Exception:
-            cleanup(bioc_dir)
-            pass
+
+            # Every 100 packages, run `svn cleanup`
+            if index % 100 == 99:
+                cleanup(rpack_dir)
+        except Exception, e:
+            print e
     print "aRchive has been created."
 
 
@@ -222,5 +222,5 @@ if __name__ == "__main__":
     ARCHIVE_DIR = os.path.abspath(args.archive_dir)
     print "aRchive is being run in %s " % BIOCONDUCTOR_DIR
     print "aRchive is being stored in %s" % ARCHIVE_DIR
-    checkout_main_biocondutor_repository(BIOCONDUCTOR_DIR)
+    #checkout_main_biocondutor_repository(BIOCONDUCTOR_DIR)
     archive_local_repository(BIOCONDUCTOR_DIR, ARCHIVE_DIR)
