@@ -191,18 +191,17 @@ def archive_local_repository(bioc_dir, archive_dir):
 
     # TODO : rpacks[392:398] yaml tab problem test
     rpacks = rpacks[392:398]
-    for index, bioc_pack in enumerate(rpacks):
+    for index, package_name in enumerate(rpacks):
         # Make Versions for EACH R package
         try:
-            log.info("Archiving %s" % bioc_pack)
-            pack_path = os.path.join(rpack_dir, bioc_pack)
-            archive_package_versions(pack_path, archive_dir)
+            log.info("Archiving %s" % package_name)
+            archive_package_versions(os.path.join(rpack_dir, package_name), archive_dir)
 
-            # Every 100 packages, run `svn cleanup`
-            if index % 100 == 99:
-                cleanup(rpack_dir)
         except Exception, e:
             log.error(e)
+        # Every 100 packages, run `svn cleanup`
+        if index % 100 == 99:
+            cleanup(rpack_dir)
     log.info("aRchive has been created.")
 
 
