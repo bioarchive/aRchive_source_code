@@ -184,9 +184,6 @@ def archive_local_repository(bioc_dir, archive_dir):
 
     TODO: Add SVN cleanup to this function after every 200 packages
     """
-    # Make the directory which user specifies to build the archive.
-    if not os.path.exists(archive_dir):
-        os.mkdir(archive_dir)
     # Get all bioconductor packages
     rpack_dir = os.path.join(bioc_dir, 'Rpacks')
     rpacks = [directory for directory in os.listdir(rpack_dir) if not directory.startswith('.')]
@@ -221,7 +218,11 @@ if __name__ == "__main__":
 
     BIOCONDUCTOR_DIR = os.path.abspath(args.bioconductor_dir)
     ARCHIVE_DIR = os.path.abspath(args.archive_dir)
-    print "aRchive is being run in %s " % BIOCONDUCTOR_DIR
-    print "aRchive is being stored in %s" % ARCHIVE_DIR
+    log.info("aRchive is being run in %s " % BIOCONDUCTOR_DIR)
+    log.info("aRchive is being stored in %s" % ARCHIVE_DIR)
     checkout_main_biocondutor_repository(BIOCONDUCTOR_DIR)
+
+    # Make the directory which user specifies to build the archive.
+    if not os.path.exists(ARCHIVE_DIR):
+        os.mkdir(ARCHIVE_DIR)
     archive_local_repository(BIOCONDUCTOR_DIR, ARCHIVE_DIR)
