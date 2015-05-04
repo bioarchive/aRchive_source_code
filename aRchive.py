@@ -24,9 +24,8 @@ import os.path
 import subprocess
 import shutil
 import re
-import sys
 import logging
-logging.basicConfig()
+logging.basicConfig(level=logging.DEBUG, name="aRchive")
 log = logging.getLogger()
 
 
@@ -89,7 +88,7 @@ def get_package_version(bioc_pack):
             return info
     except Exception, e:
         log.warn("Could not obtain a version number for %s" % bioc_pack)
-        print e
+        log.warn(e)
         return None
 
 
@@ -103,11 +102,11 @@ def checkout(cwd, revision=None):
         for checkout.
     """
     if revision is not None:
-        print "Updating to rev %s" % revision
+        log.debug("Updating to rev %s" % revision)
         try:
             subprocess.check_output(["svn", "update", "-r", revision], cwd=cwd)
-        except Exception:
-            pass
+        except Exception, e:
+            log.warning(e)
     else:
         subprocess.check_output(["svn", "update"], cwd=cwd)
 
@@ -121,7 +120,7 @@ def cleanup(path):
     """
     try:
         subprocess.check_call(['svn', 'cleanup', path])
-        print "Ran SVN cleanup on local copy of BioConductor repository"
+        log.debug("Ran SVN cleanup on local copy of BioConductor repository")
     except Exception:
         pass
 
@@ -138,15 +137,18 @@ def archive_package_versions(bioc_pack, archive_dir):
     try:
         history = subprocess.check_output(['svn', 'log', '-q'], cwd=bioc_pack)
     except subprocess.CalledProcessError:
-        print "SVN log unable to be accessed in this %s package" % bioc_pack
-    except:
-        print "Unexpected error:", sys.exc_info()[0]
-        pass
+        log.error("SVN log unable to be accessed in this %s package" % bioc_pack)
+        return None
+    except Exception, e:
+        log.error(e)
+        return None
+
     revert_ids = [line.split()[0] for line in history.splitlines() if line.startswith('r')]
+    log.debug("IDs that touched %s: %s" % (bioc_pack, ','.join(revert_ids)))
 
     # Get the version number of the Bioconductor package from DESCRIPTION file in SVN repo
     latest_version = get_package_version(bioc_pack)
-    print "Latest Version", latest_version
+    log.info("Latest Version: %s" % latest_version)
 
     # Loop through the revert IDs to find new versions
     for id in revert_ids:
@@ -156,13 +158,13 @@ def archive_package_versions(bioc_pack, archive_dir):
         # in which case we'll finish the loop)
         curr_version = get_package_version(bioc_pack)
         if curr_version is not None:
-            print "Bioc_pack version", bioc_pack, curr_version
+            log.debug("Bioc_pack version %s %s" % (bioc_pack, curr_version))
             # Create new directory with version number as "-version" extension
             bioc_pack_name = os.path.split(bioc_pack)[-1]
             output_directory = os.path.join(archive_dir,
                                             bioc_pack_name, curr_version)
             if not os.path.exists(output_directory):
-                print "Made new version directory", output_directory
+                log.info("Made new version directory: %s" % output_directory)
                 # SAVE THE CURRENT VERSION HERE
                 copy_directory(bioc_pack, output_directory)
         else:
@@ -188,7 +190,7 @@ def archive_local_repository(bioc_dir, archive_dir):
     # Get all bioconductor packages
     rpack_dir = os.path.join(bioc_dir, 'Rpacks')
     rpacks = [directory for directory in os.listdir(rpack_dir) if not directory.startswith('.')]
-    #print rpacks
+    log.debug(' '.join(rpacks))
 
     rpacks = ('SPIA', )
 
@@ -196,7 +198,7 @@ def archive_local_repository(bioc_dir, archive_dir):
         # TODO : rpacks[392:398] yaml tab problem test
         # Make Versions for EACH R package
         try:
-            print "Archiving %s" % bioc_pack
+            log.info("Archiving %s" % bioc_pack)
             pack_path = os.path.join(rpack_dir, bioc_pack)
             archive_package_versions(pack_path, archive_dir)
 
@@ -204,8 +206,8 @@ def archive_local_repository(bioc_dir, archive_dir):
             if index % 100 == 99:
                 cleanup(rpack_dir)
         except Exception, e:
-            print e
-    print "aRchive has been created."
+            log.error(e)
+    log.info("aRchive has been created.")
 
 
 if __name__ == "__main__":
@@ -222,5 +224,5 @@ if __name__ == "__main__":
     ARCHIVE_DIR = os.path.abspath(args.archive_dir)
     print "aRchive is being run in %s " % BIOCONDUCTOR_DIR
     print "aRchive is being stored in %s" % ARCHIVE_DIR
-    #checkout_main_biocondutor_repository(BIOCONDUCTOR_DIR)
+    checkout_main_biocondutor_repository(BIOCONDUCTOR_DIR)
     archive_local_repository(BIOCONDUCTOR_DIR, ARCHIVE_DIR)
