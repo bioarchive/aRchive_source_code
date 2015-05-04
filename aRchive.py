@@ -53,25 +53,6 @@ def checkout_main_biocondutor_repository(path):
     return "Bioconductor Release version repository updated"
 
 
-def copy_directory(src, dest):
-    """
-    Copies entire directory recursively
-
-    Args:
-      param1 (str): Source of the directory to be copied
-      param2 (str): Destination of the directory to be copied
-
-    """
-    try:
-        shutil.copytree(src, dest)
-    # Directories are the same
-    except shutil.Error as e:
-        log.error('Directory not copied. Error: %s' % e)
-    # Any error saying that the directory doesn't exist
-    except OSError as e:
-        log.error('Directory not copied. Error: %s' % e)
-
-
 def get_package_version(bioc_pack):
     """
     Get the version of the BioConductor package by parsing the "DESCRIPTION"
@@ -108,6 +89,7 @@ def checkout(cwd, revision=None):
         except Exception, e:
             log.warning(e)
     else:
+        log.debug("Updating to latest rev")
         subprocess.check_output(["svn", "update"], cwd=cwd)
 
 
@@ -166,7 +148,7 @@ def archive_package_versions(bioc_pack, archive_dir):
             if not os.path.exists(output_directory):
                 log.info("Made new version directory: %s" % output_directory)
                 # SAVE THE CURRENT VERSION HERE
-                copy_directory(bioc_pack, output_directory)
+                shutil.copytree(bioc_pack, output_directory)
         else:
             continue
     # Return to most recent update
