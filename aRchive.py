@@ -24,9 +24,9 @@ import os.path
 import subprocess
 import shutil
 import re
-import logging
 import tarfile
-logging.basicConfig(level=logging.DEBUG, name="aRchive")
+import logging
+logging.basicConfig(level=logging.DEBUG, name="aRchive", filename="archive.log")
 log = logging.getLogger()
 
 
@@ -104,7 +104,7 @@ def cleanup(path):
     try:
         subprocess.check_call(['svn', 'cleanup', path])
         log.debug("Ran SVN cleanup on local copy of BioConductor repository")
-    except Exception:
+    except Exception, e:
         log.warn("Could not run svn cleanup %s" % path)
         log.warn(e)
         pass
@@ -130,7 +130,7 @@ def archive_package_versions(bioc_pack, archive_dir):
         log.error("SVN log unable to be accessed in this %s package" % bioc_pack)
         return None
     except Exception, e:
-        log.error(e)
+        log.error("Unexpected error while getting history: ", e)
         return None
 
     revert_ids = [line.split()[0] for line in history.splitlines() if line.startswith('r')]
@@ -151,13 +151,27 @@ def archive_package_versions(bioc_pack, archive_dir):
             log.debug("Bioc_pack version %s %s" % (bioc_pack, curr_version))
             # Create new directory with version number as "-version" extension
             bioc_pack_name = os.path.split(bioc_pack)[-1]
-            output_directory = os.path.join(archive_dir,
-                                            bioc_pack_name, curr_version)
-            if not os.path.exists(output_directory):
-                log.info("Made new version directory: %s" % output_directory)
+            output_directory = os.path.join(archive_dir)
+            out_tarfile = bioc_pack_name + "_" + curr_version + '.tar.gz'
+            dest_tar_file = os.path.join(output_directory, out_tarfile)
+
+            log.info("\noutput_directory: %s \n out_tarfile: %s \n dest_tar_file: %s \n" % (
+                output_directory, out_tarfile, dest_tar_file))
+
+            if not os.path.exists(dest_tar_file):
                 # SAVE THE CURRENT VERSION HERE
-                shutil.copytree(bioc_pack, output_directory)
+                # Tar the directory
+                log.info('adding contents of bioc_pack %s to tarfile %s' % (bioc_pack, out_tarfile))
+                make_tarfile(out_tarfile, bioc_pack)
+                dest = os.path.join(output_directory, out_tarfile)
+                log.info('Moving %s to %s' % (out_tarfile, dest))
+                shutil.move(out_tarfile, dest)
+                # Print contents and test
+            else:
+                log.warn(
+                    "Destination tar file %s already exists; not recreating it" % dest_tar_file)
         else:
+            log.warn("Skipped everything! There is an error you are not catching")
             continue
     # Return to most recent update
     checkout(bioc_pack)
@@ -176,7 +190,7 @@ def archive_local_repository(bioc_dir, archive_dir):
     rpacks = [directory for directory in os.listdir(bioc_dir) if not directory.startswith('.')]
     log.debug(' '.join(rpacks))
 
-    rpacks = rpacks[392:398]
+    rpacks = rpacks[395:398]
     for index, package_name in enumerate(rpacks):
         # Make Versions for EACH R package
         try:
@@ -190,8 +204,9 @@ def archive_local_repository(bioc_dir, archive_dir):
     log.info("aRchive has been created.")
 
 
-if __name__ == "__main__":
-    # Run the install dependency function
+def main():
+
+    # Add command line parsing options
     parser = argparse.ArgumentParser(add_help=True, description="Create Bioconductor archive for\
         all packages, and version them based on commit history. If the command is rerun,\
         it should automatically add to an existing archive.")
@@ -200,13 +215,19 @@ if __name__ == "__main__":
     parser.add_argument("archive_dir", help="Output directory for created BioConductor aRchives")
     args = parser.parse_args()
 
+    # Define directories
     BIOCONDUCTOR_DIR = os.path.abspath(args.bioconductor_dir)
     ARCHIVE_DIR = os.path.abspath(args.archive_dir)
     log.info("aRchive is being run in %s " % BIOCONDUCTOR_DIR)
     log.info("aRchive is being stored in %s" % ARCHIVE_DIR)
+
     checkout_main_biocondutor_repository(BIOCONDUCTOR_DIR)
 
     # Make the directory which user specifies to build the archive.
     if not os.path.exists(ARCHIVE_DIR):
         os.mkdir(ARCHIVE_DIR)
     archive_local_repository(os.path.join(BIOCONDUCTOR_DIR, 'Rpacks'), ARCHIVE_DIR)
+
+
+if __name__ == "__main__":
+    main()
