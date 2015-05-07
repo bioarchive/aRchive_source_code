@@ -25,6 +25,7 @@ import subprocess
 import shutil
 import re
 import logging
+import tarfile
 logging.basicConfig(level=logging.DEBUG, name="aRchive")
 log = logging.getLogger()
 
@@ -104,7 +105,14 @@ def cleanup(path):
         subprocess.check_call(['svn', 'cleanup', path])
         log.debug("Ran SVN cleanup on local copy of BioConductor repository")
     except Exception:
+        log.warn("Could not run svn cleanup %s" % path)
+        log.warn(e)
         pass
+
+
+def make_tarfile(output_filename, source_dir):
+    with tarfile.open(output_filename, "w:gz") as tar:
+        tar.add(source_dir, arcname=os.path.basename(source_dir))
 
 
 def archive_package_versions(bioc_pack, archive_dir):
@@ -201,4 +209,4 @@ if __name__ == "__main__":
     # Make the directory which user specifies to build the archive.
     if not os.path.exists(ARCHIVE_DIR):
         os.mkdir(ARCHIVE_DIR)
-    archive_local_repository(os.path.join(BIOCONDUCTOR_DIR,'Rpacks'), ARCHIVE_DIR)
+    archive_local_repository(os.path.join(BIOCONDUCTOR_DIR, 'Rpacks'), ARCHIVE_DIR)
