@@ -62,15 +62,14 @@ def get_package_version(bioc_pack):
       bioc_pack (str): Name of the BioConductor package
     """
     try:
+        desc_file = os.path.join(bioc_pack, 'DESCRIPTION')
         with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
             # Hack to prevent DESCRIPTION files from failing to load,
             # because of yaml parsing.
-            info = str(
-                [line[8:].strip() for i, line in enumerate(handle) if re.match("^Version: [0-9]", line)][0])
-            return info
+            info = str([line[8:].strip() for i, line in enumerate(handle) if re.match("^Version: [0-9]", line)][0])
+        return info
     except Exception, e:
-        log.warn("Could not obtain a version number for %s" % bioc_pack)
-        log.warn(e)
+        log.warn("Could not obtain a version number for %s: %s" % (bioc_pack, e))
         return None
 
 
@@ -86,9 +85,12 @@ def checkout(cwd, revision=None):
     if revision is not None:
         log.debug("Updating to rev %s" % revision)
         try:
-            subprocess.check_output(["svn", "update", "-r", revision], cwd=cwd)
+            log.debug("[A] {0} exists? {1}".format(cwd, os.path.exists(cwd)))
+            log.debug("cmd: {0}".format(["svn", "update", "-r", revision]))
+            subprocess.check_call(["svn", "update", "-r", revision], cwd=cwd)
+            log.debug("[B] {0} exists? {1}".format(cwd, os.path.exists(cwd)))
         except Exception, e:
-            log.warning(e)
+            log.warning("Exception checking output of svn checkout version: %s" % e)
     else:
         log.debug("Updating to latest rev")
         subprocess.check_output(["svn", "update"], cwd=cwd)
@@ -141,21 +143,26 @@ def archive_package_versions(bioc_pack, archive_dir):
     log.info("Latest Version: %s" % latest_version)
 
     # Loop through the revert IDs to find new versions
-    for id in revert_ids:
+    for rev_id in revert_ids:
+        log.debug("\n\nProcessing version ID: %s" % rev_id)
+        log.debug("[1] {0} exists? {1}".format(bioc_pack, os.path.exists(bioc_pack)))
         # Update repository to previous revert ID
-        checkout(bioc_pack, revision=id)
+        checkout(bioc_pack, revision=rev_id)
+        log.debug("[2] {0} exists? {1}".format(bioc_pack, os.path.exists(bioc_pack)))
         # Grab current version (or None if folder doesn't exist,
         # in which case we'll finish the loop)
         curr_version = get_package_version(bioc_pack)
+        log.debug("[3] {0} exists? {1}".format(bioc_pack, os.path.exists(bioc_pack)))
         if curr_version is not None:
-            log.debug("Bioc_pack version %s %s" % (bioc_pack, curr_version))
+            log.debug("Bioc_pack %s version of %s" % (curr_version, bioc_pack))
             # Create new directory with version number as "-version" extension
             bioc_pack_name = os.path.split(bioc_pack)[-1]
             output_directory = os.path.join(archive_dir)
             out_tarfile = bioc_pack_name + "_" + curr_version + '.tar.gz'
             dest_tar_file = os.path.join(output_directory, out_tarfile)
 
-            log.info("\noutput_directory: %s \n out_tarfile: %s \n dest_tar_file: %s \n" % (
+            log.debug("[4] {0} exists? {1}".format(bioc_pack, os.path.exists(bioc_pack)))
+            log.info("\n output_directory: %s \n out_tarfile: %s \n dest_tar_file: %s" % (
                 output_directory, out_tarfile, dest_tar_file))
 
             if not os.path.exists(dest_tar_file):
@@ -171,8 +178,8 @@ def archive_package_versions(bioc_pack, archive_dir):
                 log.warn(
                     "Destination tar file %s already exists; not recreating it" % dest_tar_file)
         else:
-            log.warn("Skipped everything! There is an error you are not catching")
-            continue
+            log.warn("No current version. Skipped everything! There is an error you are not catching")
+            break
     # Return to most recent update
     checkout(bioc_pack)
 
@@ -188,9 +195,9 @@ def archive_local_repository(bioc_dir, archive_dir):
     """
     # Get all bioconductor packages
     rpacks = [directory for directory in os.listdir(bioc_dir) if not directory.startswith('.')]
-    log.debug(' '.join(rpacks))
+    # log.debug(' '.join(rpacks))
 
-    rpacks = rpacks[395:398]
+    rpacks = rpacks[1:3]
     for index, package_name in enumerate(rpacks):
         # Make Versions for EACH R package
         try:
