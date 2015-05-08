@@ -158,7 +158,7 @@ def archive_package_versions(bioc_pack, archive_dir):
             # Create new directory with version number as "-version" extension
             bioc_pack_name = os.path.split(bioc_pack)[-1]
             output_directory = os.path.join(archive_dir)
-            out_tarfile = bioc_pack_name + "_" + curr_version + '.tar.gz'
+            out_tarfile = "%s_%s.tar.gz" % (bioc_pack_name, curr_version)
             dest_tar_file = os.path.join(output_directory, out_tarfile)
 
             log.debug("[4] {0} exists? {1}".format(bioc_pack, os.path.exists(bioc_pack)))
@@ -233,7 +233,7 @@ def main():
     # Make the directory which user specifies to build the archive.
     if not os.path.exists(ARCHIVE_DIR):
         os.mkdir(ARCHIVE_DIR)
-    archive_local_repository(os.path.join(BIOCONDUCTOR_DIR, 'Rpacks'), ARCHIVE_DIR)
+    archive_local_repository(os.path.join(BIOCONDUCTOR_DIR,'Rpacks'), ARCHIVE_DIR)
 
 
 if __name__ == "__main__":
