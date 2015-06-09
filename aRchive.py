@@ -55,6 +55,43 @@ def checkout_main_biocondutor_repository(path):
     return "Bioconductor Release version repository updated"
 
 
+def get_package_dependencies(bioc_pack):
+    """
+    Get the dependencies of the BioConductor package by parsing the
+    "DESCRIPTION" file
+
+    Args:
+      bioc_pack (str): Name of the BioConductor package
+    """
+    try:
+        desc_file = os.path.join(bioc_pack, 'DESCRIPTION')
+        with open(desc_file, 'r') as handle:
+            # Deps string
+            deps = ''
+            # Inside dependencies string
+            in_deps = False
+            for line in handle:
+                # If deps are starting
+                if line.startswith('Depends:') or line.startswith('Imports:'):
+                    in_deps = True
+                    deps += line.replace('Depends:', '').replace('Imports:', '').strip()
+                else:
+                    # If deps runs over multiple lines
+                    if in_deps:
+                        # If it starts with a space, then we're on a continuation
+                        # of the dependencies
+                        if line.startswith(' '):
+                            deps += line.strip()
+                        else:
+                            # If it starts with anything other than a space, then
+                            # we're no longer in the dependencies.
+                            in_deps = False
+        return [x.strip() for x in deps.split(',')]
+    except Exception, e:
+        log.warn("Could not obtain a version number for %s: %s" % (bioc_pack, e))
+        return None
+
+
 def get_package_version(bioc_pack):
     """
     Get the version of the BioConductor package by parsing the "DESCRIPTION"
@@ -140,6 +177,10 @@ def archive_package_versions(bioc_pack, archive_dir):
     latest_version = get_package_version(bioc_pack)
     log.info("Latest Version: %s" % latest_version)
 
+    bioc_pack_name = os.path.split(bioc_pack)[-1]
+    version_list_path = os.path.join(archive_dir, bioc_pack_name + '_versions_full.txt')
+
+    dependency_data = []
     # Loop through the revert IDs to find new versions
     for rev_id in revert_ids:
         log.debug("\n\nProcessing version ID: %s" % rev_id)
@@ -151,20 +192,26 @@ def archive_package_versions(bioc_pack, archive_dir):
         if curr_version is not None:
             log.debug("Bioc_pack %s version of %s" % (curr_version, bioc_pack))
             # Create new directory with version number as "-version" extension
-            bioc_pack_name = os.path.split(bioc_pack)[-1]
-            output_directory = os.path.join(archive_dir)
             out_tarfile = "%s_%s.tar.gz" % (bioc_pack_name, curr_version)
-            dest_tar_file = os.path.join(output_directory, out_tarfile)
+            dest_tar_file = os.path.join(archive_dir, out_tarfile)
 
             log.info("\n output_directory: %s \n out_tarfile: %s \n dest_tar_file: %s" % (
-                output_directory, out_tarfile, dest_tar_file))
+                archive_dir, out_tarfile, dest_tar_file))
+
+            if curr_version not in dependency_data:
+                deps = get_package_dependencies(bioc_pack)
+                dependency_data.append((
+                    int(rev_id[1:]),
+                    curr_version,
+                    deps
+                ))
 
             if not os.path.exists(dest_tar_file):
                 # SAVE THE CURRENT VERSION HERE
                 # Tar the directory
                 log.info('adding contents of bioc_pack %s to tarfile %s' % (bioc_pack, out_tarfile))
                 make_tarfile(out_tarfile, bioc_pack)
-                dest = os.path.join(output_directory, out_tarfile)
+                dest = os.path.join(archive_dir, out_tarfile)
                 log.info('Moving %s to %s' % (out_tarfile, dest))
                 shutil.move(out_tarfile, dest)
                 # Print contents and test
@@ -174,6 +221,18 @@ def archive_package_versions(bioc_pack, archive_dir):
         else:
             log.warn("No current version. Skipped everything! There is an error you are not catching")
             break
+    # Dump version info
+    dependency_data = dependency_data[::-1]
+    with open(version_list_path, 'w') as handle:
+        for version_idx in range(len(dependency_data) - 1):
+            from_version = dependency_data[version_idx]
+            to_version = dependency_data[version_idx + 0]
+
+            # (46412, '1.17.0', ['Biobase', 'graphics', 'grDevices', 'methods', 'multtest', 'stats', 'tcltk', 'utils'])
+            for specific_idx in range(from_version[0], to_version[0]):
+                handle.write('%s\t%s\t%s\n' % (specific_idx, from_version[1],
+                                               ','.join(from_version[2])))
+
     # Return to most recent update
     checkout(bioc_pack)
 
@@ -189,7 +248,6 @@ def archive_local_repository(bioc_dir, archive_dir):
     """
     # Get all bioconductor packages
     rpacks = [directory for directory in os.listdir(bioc_dir) if not directory.startswith('.')]
-    # log.debug(' '.join(rpacks))
 
     rpacks = rpacks[1:3]
     for index, package_name in enumerate(rpacks):
