@@ -86,15 +86,12 @@ def checkout(cwd, revision=None):
     if revision is not None:
         log.debug("Updating to rev %s" % revision)
         try:
-            log.debug("[A] {0} exists? {1}".format(cwd, os.path.exists(cwd)))
-            log.debug("cmd: {0}".format(["svn", "update", "-r", revision]))
             subprocess.check_call(["svn", "update", "-r", revision], cwd=cwd)
-            log.debug("[B] {0} exists? {1}".format(cwd, os.path.exists(cwd)))
         except Exception, e:
             log.warning("Exception checking output of svn checkout version: %s" % e)
     else:
         log.debug("Updating to latest rev")
-        subprocess.check_output(["svn", "update"], cwd=cwd)
+        subprocess.check_call(["svn", "update"], cwd=cwd)
 
 
 def cleanup(path):
@@ -146,14 +143,11 @@ def archive_package_versions(bioc_pack, archive_dir):
     # Loop through the revert IDs to find new versions
     for rev_id in revert_ids:
         log.debug("\n\nProcessing version ID: %s" % rev_id)
-        log.debug("[1] {0} exists? {1}".format(bioc_pack, os.path.exists(bioc_pack)))
         # Update repository to previous revert ID
         checkout(bioc_pack, revision=rev_id)
-        log.debug("[2] {0} exists? {1}".format(bioc_pack, os.path.exists(bioc_pack)))
         # Grab current version (or None if folder doesn't exist,
         # in which case we'll finish the loop)
         curr_version = get_package_version(bioc_pack)
-        log.debug("[3] {0} exists? {1}".format(bioc_pack, os.path.exists(bioc_pack)))
         if curr_version is not None:
             log.debug("Bioc_pack %s version of %s" % (curr_version, bioc_pack))
             # Create new directory with version number as "-version" extension
@@ -162,7 +156,6 @@ def archive_package_versions(bioc_pack, archive_dir):
             out_tarfile = "%s_%s.tar.gz" % (bioc_pack_name, curr_version)
             dest_tar_file = os.path.join(output_directory, out_tarfile)
 
-            log.debug("[4] {0} exists? {1}".format(bioc_pack, os.path.exists(bioc_pack)))
             log.info("\n output_directory: %s \n out_tarfile: %s \n dest_tar_file: %s" % (
                 output_directory, out_tarfile, dest_tar_file))
 
