@@ -50,7 +50,7 @@ def checkout_main_biocondutor_repository(path):
     else:
         subprocess.check_call(['svn', 'co', '--username', 'readonly',
                                '--password', 'readonly',
-                               'https://hedgehog.fhcrc.org/bioconductor/branches/RELEASE_3_0/madman/Rpacks/'])
+                               'https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/'])
     return "Bioconductor Release version repository updated"
 
 
