@@ -44,13 +44,14 @@ def checkout_main_biocondutor_repository(path):
     if not os.path.exists(path):
         os.mkdir(path)
 
-    os.chdir(path)
-    if os.path.isdir(".svn"):
-        subprocess.check_call(['svn', 'update'])
+    if os.path.isdir(os.path.join(path, ".svn")):
+        subprocess.check_call(['svn', 'update'], cwd=path)
     else:
         subprocess.check_call(['svn', 'co', '--username', 'readonly',
                                '--password', 'readonly',
-                               'https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/'])
+                               'https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/'],
+                              cwd=path
+                              )
     return "Bioconductor Release version repository updated"
 
 
@@ -63,7 +64,7 @@ def get_package_version(bioc_pack):
     """
     try:
         desc_file = os.path.join(bioc_pack, 'DESCRIPTION')
-        with open(os.path.join(bioc_pack, 'DESCRIPTION'), 'r') as handle:
+        with open(desc_file, 'r') as handle:
             # Hack to prevent DESCRIPTION files from failing to load,
             # because of yaml parsing.
             info = str([line[8:].strip() for i, line in enumerate(handle) if re.match("^Version: [0-9]", line)][0])
