@@ -234,7 +234,7 @@ def main():
     # Make the directory which user specifies to build the archive.
     if not os.path.exists(ARCHIVE_DIR):
         os.mkdir(ARCHIVE_DIR)
-    archive_local_repository(os.path.join(BIOCONDUCTOR_DIR,'Rpacks'), ARCHIVE_DIR)
+    archive_local_repository(os.path.join(BIOCONDUCTOR_DIR, 'Rpacks'), ARCHIVE_DIR)
 
 
 if __name__ == "__main__":
