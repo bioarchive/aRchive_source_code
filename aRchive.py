@@ -52,7 +52,16 @@ def checkout_main_biocondutor_repository(path):
                                'https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/'],
                               cwd=path
                               )
-    return "Bioconductor Release version repository updated"
+
+    # Fetch repository information
+    repo_info = {}
+    tmp_info = subprocess.check_output(['svn', 'info', 'Rpacks'], cwd=path)
+    for entry in tmp_info.split('\n'):
+        if len(entry.strip()) > 0:
+            key, value = entry.strip().split(': ')
+            repo_info[key] = value
+
+    return repo_info
 
 
 def get_package_dependencies(bioc_pack):
@@ -152,7 +161,7 @@ def make_tarfile(output_filename, source_dir):
         tar.add(source_dir, arcname=os.path.basename(source_dir))
 
 
-def archive_package_versions(bioc_pack, archive_dir):
+def archive_package_versions(bioc_pack, archive_dir, latest_rev=1000):
     """
     Archive ONE package in BioConductor.
 
@@ -178,7 +187,6 @@ def archive_package_versions(bioc_pack, archive_dir):
     log.info("Latest Version: %s" % latest_version)
 
     bioc_pack_name = os.path.split(bioc_pack)[-1]
-    version_list_path = os.path.join(archive_dir, bioc_pack_name + '_versions_full.txt')
 
     dependency_data = []
     # Loop through the revert IDs to find new versions
@@ -223,10 +231,15 @@ def archive_package_versions(bioc_pack, archive_dir):
             break
     # Dump version info
     dependency_data = dependency_data[::-1]
+    version_list_path = os.path.join(archive_dir, bioc_pack_name + '_versions_full.txt')
     with open(version_list_path, 'w') as handle:
-        for version_idx in range(len(dependency_data) - 1):
+        for version_idx in range(len(dependency_data)):
             from_version = dependency_data[version_idx]
-            to_version = dependency_data[version_idx + 0]
+
+            if version_idx < len(dependency_data) - 1:
+                to_version = dependency_data[version_idx + 1]
+            else:
+                to_version = (latest_rev, None, None)
 
             # (46412, '1.17.0', ['Biobase', 'graphics', 'grDevices', 'methods', 'multtest', 'stats', 'tcltk', 'utils'])
             for specific_idx in range(from_version[0], to_version[0]):
@@ -237,7 +250,7 @@ def archive_package_versions(bioc_pack, archive_dir):
     checkout(bioc_pack)
 
 
-def archive_local_repository(bioc_dir, archive_dir):
+def archive_local_repository(bioc_dir, archive_dir, repo_info):
     """
     Archive ALL packages in BioConductor.
 
@@ -250,11 +263,12 @@ def archive_local_repository(bioc_dir, archive_dir):
     rpacks = [directory for directory in os.listdir(bioc_dir) if not directory.startswith('.')]
 
     rpacks = rpacks[1:3]
+    latest_rev = int(repo_info['Revision'])
     for index, package_name in enumerate(rpacks):
         # Make Versions for EACH R package
         try:
             log.info("Archiving %s" % package_name)
-            archive_package_versions(os.path.join(bioc_dir, package_name), archive_dir)
+            archive_package_versions(os.path.join(bioc_dir, package_name), archive_dir, latest_rev=latest_rev)
         except Exception, e:
             log.error(e)
         # Every 100 packages, run `svn cleanup`
@@ -280,12 +294,12 @@ def main():
     log.info("aRchive is being run in %s " % BIOCONDUCTOR_DIR)
     log.info("aRchive is being stored in %s" % ARCHIVE_DIR)
 
-    checkout_main_biocondutor_repository(BIOCONDUCTOR_DIR)
+    repo_info = checkout_main_biocondutor_repository(BIOCONDUCTOR_DIR)
 
     # Make the directory which user specifies to build the archive.
     if not os.path.exists(ARCHIVE_DIR):
         os.mkdir(ARCHIVE_DIR)
-    archive_local_repository(os.path.join(BIOCONDUCTOR_DIR, 'Rpacks'), ARCHIVE_DIR)
+    archive_local_repository(os.path.join(BIOCONDUCTOR_DIR, 'Rpacks'), ARCHIVE_DIR, repo_info)
 
 
 if __name__ == "__main__":
