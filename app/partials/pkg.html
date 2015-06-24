@@ -1,0 +1,87 @@
+<div class="col-md-3 menu">
+	<ul class="pkg_list">
+		<a ng-repeat="lpkg in pkg_list | filter:query" href="#/pkg/{{lpkg}}/">
+			<li  class="withripple {{lpkg === pkg.info.Package ? 'active' : ''}}">{{lpkg}}</li>
+		</a>
+	</ul>
+</div>
+
+<div class="pages col-md-9">
+	<div class="col-md-10" style="padding-top:0px">
+		<div class="well page active">
+			<ul class="breadcrumb">
+				<li><a href="#/pkg/">Home</a></li>
+				<li class="{{version !== undefined ? '' : 'active'}}">
+					<a ng-if="version !== undefined" href="#/pkg/{{pkg.info.Package}}">
+						{{pkg.info.Package}}
+					</a>
+					<span ng-if="version === undefined">
+						{{pkg.info.Package}}
+					</span>
+				</li>
+				<li class="{{version !== undefined ? 'active' : ''}}" ng-if="version !== undefined">{{version}}</li>
+			</ul>
+			<h1>{{pkg.info.Package}}</h1>
+			<p>{{pkg.info.Description}}</p>
+			<div class="row">
+				<div class="col-md-3">
+					<div class="panel panel-default panel-primary">
+						<div class="panel-heading">
+							Available Versions
+						</div>
+						<div class="panel-body thin_menu panel-version-list">
+							<ul>
+								<a ng-repeat="x in pkg.versions" href="#/pkg/{{pkg.info.Package}}/{{x}}">
+									<li class="withripple {{x === version ? 'active' : ''}}">{{x}}</li>
+								</a>
+							</ul>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-8" ng-if="version !== undefined">
+					<div class="panel panel-default panel-info">
+						<div class="panel-heading">
+							Dependency Information
+						</div>
+						<div class="panel-body">
+							<h4>Package Url</h4>
+							<pre>https://bioarchive.galaxyproject.org/{{pkg.info.Package}}_{{version}}.tar.gz</pre>
+
+							<h4>Dependencies</h4>
+							<p class="text-muted">
+							Dependency versions are calculated from the most recent version of each
+							dependency available, as of the specific SVN revision at which this package
+							version was extracted
+							</p>
+							<ul>
+								<li ng-repeat="dep in deps">
+										<div ng-if="dep.version !== undefined">
+											<a href="#/pkg/{{dep.package}}/{{dep.version}}/">{{dep.package}}=={{dep.version}}</a>
+										</div>
+										<div ng-if="dep.version === undefined">
+											{{dep.package}}
+										</div>
+								</li>
+							</ul>
+
+							<h4>Dependency URLs</h4>
+							<p class="text-muted">
+							Please note that these are not currently recursively calculated
+							</p>
+							<pre><span ng-repeat="dep in deps"><span ng-if="dep.version !== undefined">https://bioarchive.galaxyproject.org/{{dep.package}}_{{dep.version}}.tar.gz</span><span ng-if="dep.version === undefined"># {{dep.package}}</span>
+<!-- Leave this alone!! --></span></pre>
+						</div>
+					</div>
+				</div>
+			</div>
+                        <h3>Package Information <small>for latest version</small></h3>
+                        <table class="table table-striped">
+                                <tbody>
+                                        <tr ng-repeat="(key, value) in pkg.info">
+                                                <td>{{key}}</td><td>{{value}}</td>
+                                        </tr>
+                                </tbody>
+                        </table>
+		</div>
+	</div>
+</div>
