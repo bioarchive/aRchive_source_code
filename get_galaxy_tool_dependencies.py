@@ -14,7 +14,7 @@ except ImportError:
     raise ImportError(
         "RPy2 must be installed to use this script.")
 
-ARCHIVE_URL_TEMPLATE = 'http://bioarchive.galaxyproject.org'
+ARCHIVE_URL_TEMPLATE = 'https://bioarchive.galaxyproject.org'
 R_VERSION = '3.2'
 R_PACKAGE_NAME = 'package_r_%s' % (R_VERSION.replace('.', '_'))
 PACKAGE_NAME = 'monocle'
