@@ -18,12 +18,12 @@ Example:
 
 """
 
+import json
 import argparse
 import os
 import os.path
 import subprocess
 import shutil
-import re
 import tarfile
 import logging
 logging.basicConfig(level=logging.DEBUG, name="aRchive", filename="archive.log")
@@ -64,6 +64,45 @@ def checkout_main_biocondutor_repository(path):
     return repo_info
 
 
+def bad_yaml_parser(bioc_pack):
+    """
+    Get the fields of the BioConductor package by parsing the
+    "DESCRIPTION" file
+
+    Args:
+      bioc_pack (str): Name of the BioConductor package
+    """
+    try:
+        desc_file = os.path.join(bioc_pack, 'DESCRIPTION')
+        data = {}
+        with open(desc_file, 'r') as handle:
+            current_key = None
+            for line in handle:
+                # If deps are starting
+                if not line.startswith(' '):
+                    current_key = line.split(':')[0].strip()
+                    if current_key not in data:
+                        data[current_key] = ''
+                    data[current_key] += line.replace(current_key + ':', '').strip() + ' '
+                else:
+                    # If deps runs over multiple lines
+                    if current_key is not None:
+                        # If it starts with a space, then we're on a continuation
+                        # of the dependencies
+                        if line.startswith(' '):
+                            data[current_key] += line.strip() + ' '
+                        else:
+                            # If it starts with anything other than a space, then
+                            # we're no longer in the dependencies.
+                            current_key = None
+        for key in data:
+            data[key] = data[key].strip()
+        return data
+    except Exception, e:
+        log.warn("Could not parse %s: %s" % (bioc_pack, e))
+        return {}
+
+
 def get_package_dependencies(bioc_pack):
     """
     Get the dependencies of the BioConductor package by parsing the
@@ -72,33 +111,12 @@ def get_package_dependencies(bioc_pack):
     Args:
       bioc_pack (str): Name of the BioConductor package
     """
-    try:
-        desc_file = os.path.join(bioc_pack, 'DESCRIPTION')
-        with open(desc_file, 'r') as handle:
-            # Deps string
-            deps = ''
-            # Inside dependencies string
-            in_deps = False
-            for line in handle:
-                # If deps are starting
-                if line.startswith('Depends:') or line.startswith('Imports:'):
-                    in_deps = True
-                    deps += line.replace('Depends:', '').replace('Imports:', '').strip()
-                else:
-                    # If deps runs over multiple lines
-                    if in_deps:
-                        # If it starts with a space, then we're on a continuation
-                        # of the dependencies
-                        if line.startswith(' '):
-                            deps += line.strip()
-                        else:
-                            # If it starts with anything other than a space, then
-                            # we're no longer in the dependencies.
-                            in_deps = False
-        return [x.strip() for x in deps.split(',')]
-    except Exception, e:
-        log.warn("Could not obtain a version number for %s: %s" % (bioc_pack, e))
-        return None
+    data = bad_yaml_parser(bioc_pack)
+    deps = []
+    for key in ('Depends', 'Imports'):
+        if 'Depends' in data:
+            deps += [x.strip() for x in data['Depends'].split(',') if x.strip() not in deps]
+    return deps
 
 
 def get_package_version(bioc_pack):
@@ -108,15 +126,11 @@ def get_package_version(bioc_pack):
     Args:
       bioc_pack (str): Name of the BioConductor package
     """
-    try:
-        desc_file = os.path.join(bioc_pack, 'DESCRIPTION')
-        with open(desc_file, 'r') as handle:
-            # Hack to prevent DESCRIPTION files from failing to load,
-            # because of yaml parsing.
-            info = str([line[8:].strip() for i, line in enumerate(handle) if re.match("^Version: [0-9]", line)][0])
-        return info
-    except Exception, e:
-        log.warn("Could not obtain a version number for %s: %s" % (bioc_pack, e))
+    data = bad_yaml_parser(bioc_pack)
+    if 'Version' in data:
+        return data['Version']
+    else:
+        log.warn("Could not obtain a version number for %s" % (bioc_pack))
         return None
 
 
@@ -184,11 +198,14 @@ def archive_package_versions(bioc_pack, archive_dir, latest_rev=1000):
 
     # Get the version number of the Bioconductor package from DESCRIPTION file in SVN repo
     latest_version = get_package_version(bioc_pack)
+    latest_info = bad_yaml_parser(bioc_pack)
     log.info("Latest Version: %s" % latest_version)
 
     bioc_pack_name = os.path.split(bioc_pack)[-1]
-
+    # Dependency info
     dependency_data = []
+    # Store a list of all versions for the "API"
+    stored_version = [latest_version]
     # Loop through the revert IDs to find new versions
     for rev_id in revert_ids:
         log.debug("\n\nProcessing version ID: %s" % rev_id)
@@ -205,6 +222,9 @@ def archive_package_versions(bioc_pack, archive_dir, latest_rev=1000):
 
             log.info("\n output_directory: %s \n out_tarfile: %s \n dest_tar_file: %s" % (
                 archive_dir, out_tarfile, dest_tar_file))
+
+            if curr_version not in stored_version:
+                stored_version.append(curr_version)
 
             if curr_version not in dependency_data:
                 deps = get_package_dependencies(bioc_pack)
@@ -230,6 +250,17 @@ def archive_package_versions(bioc_pack, archive_dir, latest_rev=1000):
             log.warn("No current version. Skipped everything! There is an error you are not catching")
             break
     # Dump version info
+    try:
+        os.makedirs(os.path.join(archive_dir, 'api'))
+    except Exception:
+        pass
+    with open(os.path.join(archive_dir, 'api', bioc_pack_name + '.json'), 'w') as handle:
+        api_data = {
+            'versions': stored_version,
+            'info': latest_info,
+        }
+        json.dump(api_data, handle)
+
     dependency_data = dependency_data[::-1]
     version_list_path = os.path.join(archive_dir, bioc_pack_name + '_versions_full.txt')
     with open(version_list_path, 'w') as handle:
@@ -262,7 +293,7 @@ def archive_local_repository(bioc_dir, archive_dir, repo_info):
     # Get all bioconductor packages
     rpacks = [directory for directory in os.listdir(bioc_dir) if not directory.startswith('.')]
 
-    rpacks = rpacks[1:3]
+    #rpacks = rpacks[1:3] + ['Biobase']
     latest_rev = int(repo_info['Revision'])
     for index, package_name in enumerate(rpacks):
         # Make Versions for EACH R package
@@ -275,6 +306,14 @@ def archive_local_repository(bioc_dir, archive_dir, repo_info):
         if index % 100 == 99:
             cleanup(bioc_dir)
     log.info("aRchive has been created.")
+
+    # Store a list of all packages to an "API"
+    try:
+        os.makedirs(os.path.join(archive_dir, 'api'))
+    except Exception:
+        pass
+    with open(os.path.join(archive_dir, 'api', 'api.json'), 'w') as handle:
+        json.dump(rpacks, handle)
 
 
 def main():
