@@ -254,7 +254,6 @@ class BiocPackage(object):
         self.svn.checkout(self.pack)
 
 
-
 class BiocRepo(object):
 
     def __init__(self, bioc_dir, archive_dir, svn):
@@ -296,20 +295,19 @@ class BiocRepo(object):
 
 
 def main():
-
     # Add command line parsing options
     parser = argparse.ArgumentParser(add_help=True, description=(
-        "Create Bioconductor archive for"
+        "Create Bioconductor archive for "
         "all packages, and version them based on commit history. If the command is rerun,"
         "it should automatically add to an existing archive."
     ))
-    parser.add_argument("bioconductor_dir", help="Path to clone bioconductor directory")
-    parser.add_argument("archive_dir", help="Output directory for created BioConductor aRchives")
+    parser.add_argument("bioc", help="Path to clone bioconductor directory")
+    parser.add_argument("arch", help="Output directory for created BioConductor aRchives")
     args = parser.parse_args()
 
     # Define directories
-    bioc_dir = os.path.abspath(args.bioconductor_dir)
-    archives = os.path.abspath(args.archive_dir)
+    bioc_dir = os.path.abspath(args.bioc)
+    archives = os.path.abspath(args.arch)
     log.info("aRchive is being run in %s " % bioc_dir)
     log.info("aRchive is being stored in %s" % archives)
 
