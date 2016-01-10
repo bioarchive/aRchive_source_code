@@ -6,8 +6,9 @@ import os.path
 import subprocess
 import shutil
 import tarfile
+import sqlite3
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(name="archive")
 
 __author__ = 'Nitesh Turaga'
@@ -68,7 +69,7 @@ class SvnClient(object):
             log.debug("Updating to latest rev")
             subprocess.check_call(["svn", "update"], cwd=self.path)
 
-    def cleanup(self, path):
+    def cleanup(self):
         """Run SVN cleanup on BioConductor repository
         """
         try:
@@ -77,6 +78,13 @@ class SvnClient(object):
         except Exception, e:
             log.warn("Could not run svn cleanup %s", self.path)
             log.warn(e)
+
+    def diff(self, start, end):
+        return subprocess.check_output([
+            'svn', 'diff',
+            '-r', '%s:%s' % (start, end),
+            '--summarize'
+        ], cwd=self.path)
 
 
 class BiocPackage(object):
@@ -265,20 +273,63 @@ class BiocRepo(object):
         self.archive_dir = archive_dir
         self.svn = svn
         self.repo_info = svn.repo_info()
-        pass
+        self.db = os.path.join(self.archive_dir, 'bioarchive.sqlite3')
+        self.create_db(self.db)
 
-    def archive_local_repository(self):
-        """Archive ALL packages in BioConductor.
+    def create_db(self, db_path):
+        self.conn = sqlite3.connect(db_path)
+        cursor = self.conn.cursor()
+        statements = [
+            """
+            CREATE TABLE IF NOT EXISTS meta (
+                key TEXT,
+                value TEXT
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS bioc_packs (
+                id INTEGER PRIMARY KEY,
+                pack TEXT
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS bioc_versions (
+                id INTEGER PRIMARY KEY,
+                pack_id INTEGER,
+                version TEXT,
+                FOREIGN KEY(pack_id) REFERENCES bioc_packs(id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS bioc_deps (
+                id INTEGER PRIMARY KEY,
+                version_id INTEGER,
+                dependency TEXT
+            )
+            """
+        ]
+
+        for stmt in statements:
+            cursor.execute(stmt)
+        self.conn.commit()
+
+    def update_index(self):
+        """Updates the database index, does not generate packages.
+
+        With the new sqlite database being stored, we only need to
+        calculate changes between the revisions we've seen, rather
+        than completely from end to end.
         """
-        # Get all bioconductor packages
+        previousRevision = self.meta_get_kv('svn_rev')
+        currentRevision = self.repo_info['Revision']
+
+        self.svn.update()
         rpacks = [directory for directory in os.listdir(self.bioc_dir) if not
                   directory.startswith('.')]
 
-        latest_rev = int(self.repo_info['Revision'])
         for index, package_name in enumerate(rpacks):
-            # Make Versions for EACH R package
             pack_dir = os.path.join(self.bioc_dir, package_name)
-            pack = BiocPackage(pack_dir, self.archive_dir, self.svn)
+            pack = BiocPackage(pack_dir, self.archive, self.svn)
             try:
                 log.info("Archiving %s" % package_name)
                 pack.archive_package_versions(latest_rev=latest_rev)
@@ -296,6 +347,37 @@ class BiocRepo(object):
             pass
         with open(os.path.join(self.archive_dir, 'api', 'api.json'), 'w') as handle:
             json.dump(rpacks, handle)
+
+
+        # self.meta_set_kv('svn_rev', int(self.repo_info['Revision']))
+
+    def meta_get_kv(self, key):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """SELECT value FROM meta WHERE key == ?""",
+            (key, )
+        )
+        row = cursor.fetchone()
+
+        if row is None:
+            return None
+
+        return row[0]
+
+    def meta_set_kv(self, key, value):
+        val = self.meta_get_kv(key)
+        cursor = self.conn.cursor()
+
+        if val is not None:
+            q = """UPDATE meta SET value = ? where key = ?"""
+            d = (value, key)
+        else:
+            q = """INSERT INTO meta VALUES (?, ?)"""
+            d = (key, value)
+
+        cursor.execute(q, d)
+
+        self.conn.commit()
 
 
 def main():
@@ -316,14 +398,15 @@ def main():
     log.info("aRchive is being stored in %s" % archives)
 
     svn = SvnClient(bioc_dir)
-    svn.cloneOrUpdate()
+    # svn.cloneOrUpdate()
 
     # Make the directory which user specifies to build the archive.
     if not os.path.exists(archives):
         os.mkdir(archives)
 
     bioc = BiocRepo(bioc_dir, archives, svn)
-    bioc.archive_local_repository()
+    bioc.update_index()
+    # bioc.archive_local_repository()
 
 if __name__ == "__main__":
     main()

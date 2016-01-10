@@ -1,5 +1,4 @@
 #!/bin/bash
-env | sort
 rm -rf ~/aRchive_source_code-master
 wget https://github.com/bioarchive/aRchive_source_code/archive/master.tar.gz -O archive_source_code.tar.gz
 tar xvfz archive_source_code.tar.gz
