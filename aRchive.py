@@ -32,7 +32,7 @@ class SvnClient(object):
                 'svn', 'co',
                 '--username', self.username,
                 '--password', self.password,
-                'https://hedgehog.fhcrc.org/bioconductor/trunk/madman/Rpacks/'
+                self.repo_url
             ], cwd=self.path)
 
     def repo_info(self):
@@ -144,14 +144,8 @@ class BiocPackage(object):
             log.warn("Could not obtain a version number for %s", self)
             return None
 
-    def make_tarfile(self, output_filename, source_dir):
-        with tarfile.open(output_filename, "w:gz") as tar:
-            tar.add(source_dir, arcname=os.path.basename(source_dir))
-
-    def archive_package_versions(self, latest_rev=1000):
-
-        """
-        Archive ONE package in BioConductor.
+    def get_available_versions(self):
+        """List svn revision IDs which touched this package
         """
         # Get history of the SVN repo and get all revert IDs
         try:
@@ -163,9 +157,19 @@ class BiocPackage(object):
             log.error("Unexpected error while getting history: ", e)
             return None
 
-        revert_ids = [line.split()[0] for line in history.splitlines()
-                      if line.startswith('r')]
+        return [line.split()[0] for line in history.splitlines() if
+                line.startswith('r')]
 
+    def make_tarfile(self, output_filename, source_dir):
+        with tarfile.open(output_filename, "w:gz") as tar:
+            tar.add(source_dir, arcname=os.path.basename(source_dir))
+
+    def archive_package_versions(self, latest_rev=1000):
+
+        """
+        Archive ONE package in BioConductor.
+        """
+        revert_ids = self.get_available_versions()
         log.debug("IDs that touched %s: %s", self.pack,
                   ','.join(revert_ids))
 
