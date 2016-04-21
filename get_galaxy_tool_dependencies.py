@@ -3,6 +3,7 @@
 import sys
 import requests
 from string import Template
+import urllib2
 
 try:
     import rpy2.robjects as robjects
@@ -38,19 +39,33 @@ def download_archive(url):
     local_filename = url.split('/')[-1]
     r = requests.get(url, stream=True)
     with open(local_filename, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=1024): 
+        for chunk in r.iter_content(chunk_size=1024):
             if chunk: # filter out keep-alive new chunks
                 f.write(chunk)
                 f.flush()
     return local_filename
 
 
+def test_links(urllist):
+    failed_urls = []
+    for i in urllist:
+        try:
+            urllib2.urlopen(i)
+        except urllib2.HTTPError, e:
+            print(e.code)
+            failed_urls.appent(i)
+        except urllib2.URLError, e:
+            print(e.args)
+    return list(set(urllist)-set(failed_urls))
+
+
 def get_dependencies_url( package_name ):
 
     robjects.r("""
+        cat("pass1")
         library("pkgDepTools")
         library("BiocInstaller")
-
+        cat("pass2")
         getPackageDependencies <- function( package )
         {
             dependencies <- makeDepGraph(biocinstallRepos(), type="source", keep.builtin=TRUE, dosize=FALSE)
@@ -70,7 +85,9 @@ def get_dependencies_url( package_name ):
     )
 
     r_get_package_deps = robjects.r['getPackageDependencies']
-    return [url for url in r_get_package_deps( package_name ) if not url.startswith('NA')]
+    url_list = [url for url in r_get_package_deps( package_name ) if not url.startswith('NA')]
+    tested_urls = test_links(url_list)
+    return tested_urls
 
 
 if __name__ == '__main__':
@@ -98,7 +115,3 @@ if __name__ == '__main__':
     with open( 'tool_dependencies.xml' ) as handle:
         r_package_template = Template( handle.read() )
         sys.stdout.write( r_package_template.safe_substitute( substitutes ) )
-
-
-
-
