@@ -5,6 +5,9 @@ wget https://github.com/bioarchive/aRchive_source_code/archive/master.tar.gz -O 
 tar xvfz archive_source_code.tar.gz
 rm -f ~/archive_source_code.tar.gz
 
+# SVN cleanup
+svn cleanup ~/Rpacks/Rpacks
+
 # Build archive
 python aRchive_source_code-master/aRchive.py ~/Rpacks /srv/nginx/bioarchive.galaxyproject.org/root/
 # Copy js updates in
