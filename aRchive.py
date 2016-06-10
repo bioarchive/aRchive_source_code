@@ -303,8 +303,9 @@ def archive_local_repository(bioc_dir, archive_dir, repo_info):
         except Exception, e:
             log.error(e)
         # Every 100 packages, run `svn cleanup`
-        if index % 100 == 99:
+        if index % 20 == 19:
             cleanup(bioc_dir)
+            log.info("svn cleanup has been run.")
     log.info("aRchive has been created.")
 
     # Store a list of all packages to an "API"
