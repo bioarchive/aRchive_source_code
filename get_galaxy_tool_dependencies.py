@@ -29,7 +29,7 @@ def package_exists(path):
 
 def install_dependencies():
     base = importr('base')
-    base.source("http://www.bioconductor.org/biocLite.R")
+    base.source("https://bioconductor.org/biocLite.R")
     biocinstaller = importr("BiocInstaller")
     biocinstaller.biocLite("pkgDepTools")
 
